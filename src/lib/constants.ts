@@ -1,0 +1,12 @@
+export const VOLUME_MIN = 0;
+export const VOLUME_MAX = 0.25;
+export const VOLUME_DEFAULT = 0.10;
+export const CARRIER_FREQ_DEFAULT = 200;
+export const CARRIER_FREQ_MIN = 100;
+export const CARRIER_FREQ_MAX = 400;
+export const DETECTION_INTERVAL_DEFAULT = 3;
+export const WS_PORT = 47821;
+export const APP_NAME = 'Attunely';
+export const BRAND_NAME = 'TranceLab';
+export const PRO_PRICE_MONTHLY = 6.99;
+export const PRO_PRICE_LIFETIME = 89;

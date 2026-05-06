@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Attunely Bridge",
+  "version": "1.0.0",
+  "description": "Sends active tab URL to Attunely desktop app for context-aware binaural beats",
+  "permissions": ["tabs", "storage"],
+  "host_permissions": ["http://localhost:47821/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Attunely Bridge"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "attunely-bridge@trancelab.ai",
+      "strict_min_version": "109.0"
+    }
+  }
+}
