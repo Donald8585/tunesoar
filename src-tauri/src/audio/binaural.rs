@@ -16,17 +16,6 @@ pub struct BinauralEngine {
     phase_r: Arc<Mutex<f32>>,
 }
 
-impl BeatProfile {
-    pub fn new(beat_type: BeatType, beat_freq: f32, carrier_freq: f32, volume: f32) -> Self {
-        Self {
-            beat_type,
-            beat_frequency: beat_freq,
-            carrier_frequency: carrier_freq,
-            volume,
-        }
-    }
-}
-
 impl BinauralEngine {
     /// Create a new binaural beat engine and start streaming
     pub fn new(profile: BeatProfile) -> Result<Self, String> {

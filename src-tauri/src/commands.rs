@@ -1,6 +1,9 @@
 use crate::audio::{AudioState, ContextType, DetectedContext, update_beat_for_context};
 use crate::context::ContextState;
 use crate::context::detector::ContextDetector;
+use crate::license::LicenseState;
+use crate::safety::SafetyState;
+use crate::safety::gate::{self, SafetyAcknowledgment};
 use crate::storage::db::{ContextMapping, UserPrefs, UsageLog};
 use crate::storage::StorageState;
 use crate::ws::WsState;
@@ -198,4 +201,211 @@ pub fn accept_safety_warning(storage: State<StorageState>) -> Result<(), String>
 pub fn is_safety_accepted(storage: State<StorageState>) -> Result<bool, String> {
     let prefs = storage.db.lock().unwrap().get_prefs()?;
     Ok(prefs.safety_warning_accepted)
+}
+
+// ─── Safety Commands ──────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SafetyStatus {
+    pub acknowledged: bool,
+    pub read_and_understood: bool,
+    pub no_listed_conditions: bool,
+    pub requires_reack: bool,
+    pub continuous_play_seconds: i64,
+    pub break_required: bool,
+    pub break_remaining_seconds: i64,
+    pub gamma_enabled: bool,
+    pub gamma_confirmed: bool,
+    pub discomfort_active: bool,
+    pub discomfort_remaining_seconds: i64,
+    pub max_session_seconds: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionInfo {
+    pub session_active: bool,
+    pub elapsed_seconds: i64,
+    pub remaining_seconds: i64,
+    pub break_required: bool,
+}
+
+/// Get full safety status
+#[tauri::command]
+pub fn get_safety_status(
+    safety: State<SafetyState>,
+    storage: State<StorageState>,
+) -> Result<SafetyStatus, String> {
+    let gate = safety.gate.lock().unwrap();
+    let reqs_reack = gate.requires_reacknowledgment(&safety.app_version);
+    let prefs = storage.db.lock().unwrap().get_prefs()?;
+
+    let now = chrono::Utc::now().timestamp();
+    let break_remaining = safety.break_cooldown_until.lock().unwrap()
+        .map(|until| (until - now).max(0))
+        .unwrap_or(0);
+    let discomfort_remaining = safety.discomfort_until.lock().unwrap()
+        .map(|until| (until - now).max(0))
+        .unwrap_or(0);
+
+    Ok(SafetyStatus {
+        acknowledged: gate.acknowledged || prefs.safety_warning_accepted,
+        read_and_understood: gate.last_ack.as_ref().map(|a| a.read_and_understood).unwrap_or(false),
+        no_listed_conditions: gate.last_ack.as_ref().map(|a| a.no_listed_conditions).unwrap_or(false),
+        requires_reack: reqs_reack,
+        continuous_play_seconds: *safety.continuous_play_seconds.lock().unwrap(),
+        break_required: *safety.break_required.lock().unwrap(),
+        break_remaining_seconds: break_remaining,
+        gamma_enabled: *safety.gamma_enabled.lock().unwrap(),
+        gamma_confirmed: *safety.gamma_confirmed.lock().unwrap(),
+        discomfort_active: discomfort_remaining > 0,
+        discomfort_remaining_seconds: discomfort_remaining,
+        max_session_seconds: gate::MAX_CONTINUOUS_PLAY_SECONDS,
+    })
+}
+
+/// Acknowledge safety gate (two checkboxes required)
+#[tauri::command]
+pub fn acknowledge_safety(
+    read_and_understood: bool,
+    no_listed_conditions: bool,
+    safety: State<SafetyState>,
+    storage: State<StorageState>,
+) -> Result<SafetyAcknowledgment, String> {
+    let mut gate = safety.gate.lock().unwrap();
+    let ack = gate.acknowledge(
+        read_and_understood,
+        no_listed_conditions,
+        safety.app_version.clone(),
+    );
+
+    // Persist to storage
+    storage.db.lock().unwrap().save_pref("safety_warning_accepted", &ack.accepted.to_string())?;
+    storage.db.lock().unwrap().save_pref("safety_ack_timestamp", &ack.timestamp.to_string())?;
+    storage.db.lock().unwrap().save_pref("safety_ack_version", &ack.app_version)?;
+
+    Ok(ack)
+}
+
+/// "I feel unwell" — immediate stop + 24h cooldown
+#[tauri::command]
+pub fn discomfort_stop(
+    audio: State<AudioState>,
+    safety: State<SafetyState>,
+    storage: State<StorageState>,
+) -> Result<(), String> {
+    // Kill audio immediately
+    if let Some(ref mut engine) = *audio.engine.lock().unwrap() {
+        engine.fade_out();
+    }
+    *audio.engine.lock().unwrap() = None;
+
+    // Set 24h cooldown
+    let now = chrono::Utc::now().timestamp();
+    let until = now + gate::DISCOMFORT_COOLDOWN_SECONDS;
+    *safety.discomfort_until.lock().unwrap() = Some(until);
+
+    // Log the event
+    let _ = storage.db.lock().unwrap().log_usage(&UsageLog {
+        id: None,
+        context_type: "DiscomfortStop".to_string(),
+        beat_type: "None".to_string(),
+        app_name: "Safety".to_string(),
+        duration_secs: 0,
+        timestamp: now,
+    });
+
+    log::warn!("Discomfort stop triggered — 24h cooldown activated");
+    Ok(())
+}
+
+/// Enable gamma band (requires secondary confirmation)
+#[tauri::command]
+pub fn enable_gamma(
+    safety: State<SafetyState>,
+    storage: State<StorageState>,
+) -> Result<(), String> {
+    let confirmed = *safety.gamma_confirmed.lock().unwrap();
+    if !confirmed {
+        return Err("Gamma band requires secondary safety confirmation".to_string());
+    }
+    *safety.gamma_enabled.lock().unwrap() = true;
+    storage.db.lock().unwrap().save_pref("gamma_enabled", "true")?;
+    log::info!("Gamma band enabled");
+    Ok(())
+}
+
+/// Confirm gamma band secondary warning
+#[tauri::command]
+pub fn confirm_gamma_warning(
+    safety: State<SafetyState>,
+) -> Result<(), String> {
+    *safety.gamma_confirmed.lock().unwrap() = true;
+    Ok(())
+}
+
+/// Get session info (elapsed, remaining, break status)
+#[tauri::command]
+pub fn get_session_info(
+    safety: State<SafetyState>,
+) -> Result<SessionInfo, String> {
+    let play_secs = *safety.continuous_play_seconds.lock().unwrap();
+    let break_required = *safety.break_required.lock().unwrap();
+
+    Ok(SessionInfo {
+        session_active: play_secs > 0 && !break_required,
+        elapsed_seconds: play_secs,
+        remaining_seconds: (gate::MAX_CONTINUOUS_PLAY_SECONDS - play_secs).max(0),
+        break_required,
+    })
+}
+
+// ─── License Commands ─────────────────────────────────────────
+
+/// Get current license info
+#[tauri::command]
+pub fn get_license_info(
+    license: State<LicenseState>,
+) -> Result<crate::license::LicenseInfo, String> {
+    Ok(license.info.lock().unwrap().clone())
+}
+
+/// Set license key and verify
+#[tauri::command]
+pub async fn set_license_key(
+    key: String,
+    license: State<'_, LicenseState>,
+) -> Result<crate::license::LicenseInfo, String> {
+    // Verify license key against Cloudflare Worker
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(&license.verification_url)
+        .json(&serde_json::json!({
+            "key": key,
+            "device_id": hostname::get()
+                .map(|h| h.to_string_lossy().to_string())
+                .unwrap_or_else(|_| "unknown".to_string()),
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Verification failed: {}", e))?;
+
+    if resp.status().is_success() {
+        let info: crate::license::LicenseInfo = resp
+            .json()
+            .await
+            .map_err(|e| format!("Parse error: {}", e))?;
+        let mut current = license.info.lock().unwrap();
+        *current = info.clone();
+        Ok(info)
+    } else {
+        Err("Invalid or expired license key".to_string())
+    }
+}
+
+/// Verify current license status
+#[tauri::command]
+pub async fn verify_license(
+    license: State<'_, LicenseState>,
+) -> Result<bool, String> {
+    Ok(license.is_valid())
 }

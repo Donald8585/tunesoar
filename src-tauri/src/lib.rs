@@ -1,17 +1,26 @@
 mod audio;
 mod commands;
 mod context;
+mod license;
+mod safety;
 mod storage;
 mod tray;
 mod ws;
 
+// Re-exports for testing
+pub use audio::{AudioState, BeatType, ContextType, BeatProfile, DetectedContext};
+
 use audio::AudioState;
 use context::ContextState;
+use license::LicenseState;
+use safety::SafetyState;
 use storage::StorageState;
 use ws::WsState;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::Manager;
+
+const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -36,6 +45,8 @@ pub fn run() {
             app.manage(AudioState::new());
             app.manage(ContextState::new());
             app.manage(WsState::new());
+            app.manage(SafetyState::new(APP_VERSION.to_string()));
+            app.manage(LicenseState::new());
 
             // Create system tray
             let handle = app.handle().clone();
@@ -46,11 +57,9 @@ pub fn run() {
             let auth_token = ws_state.auth_token.lock().unwrap().clone();
             let (url_tx, mut url_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
 
-            // Store URL updates into context state (via Arc)
             let context_state = app.state::<ContextState>();
             let browser_url = context_state.browser_url.clone();
 
-            // Spawn URL receiver
             std::thread::spawn(move || {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(async move {
@@ -61,7 +70,6 @@ pub fn run() {
                 });
             });
 
-            // Spawn WebSocket server (separate channel pair)
             let ws_token = auth_token;
             let (ws_tx, _ws_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
             std::thread::spawn(move || {
@@ -82,6 +90,53 @@ pub fn run() {
 
                     let audio_state = handle_clone.state::<AudioState>();
                     let context_state = handle_clone.state::<ContextState>();
+                    let safety_state = handle_clone.state::<SafetyState>();
+
+                    // Check discomfort cooldown
+                    if let Some(until) = *safety_state.discomfort_until.lock().unwrap() {
+                        let now = chrono::Utc::now().timestamp();
+                        if now < until {
+                            // Still in cooldown, don't play
+                            continue;
+                        }
+                    }
+
+                    // Check break cooldown
+                    if *safety_state.break_required.lock().unwrap() {
+                        if let Some(until) = *safety_state.break_cooldown_until.lock().unwrap() {
+                            let now = chrono::Utc::now().timestamp();
+                            if now < until {
+                                continue; // In break
+                            } else {
+                                *safety_state.break_required.lock().unwrap() = false;
+                                *safety_state.break_cooldown_until.lock().unwrap() = None;
+                                *safety_state.continuous_play_seconds.lock().unwrap() = 0;
+                            }
+                        }
+                    }
+
+                    // Track continuous play time
+                    let mut play_secs = safety_state.continuous_play_seconds.lock().unwrap();
+                    *play_secs += 3;
+
+                    // Check 90-minute limit
+                    if *play_secs >= safety::gate::MAX_CONTINUOUS_PLAY_SECONDS {
+                        *safety_state.break_required.lock().unwrap() = true;
+                        let now = chrono::Utc::now().timestamp();
+                        *safety_state.break_cooldown_until.lock().unwrap() =
+                            Some(now + safety::gate::BREAK_DURATION_SECONDS);
+
+                        // Emit break notification to frontend
+                        if let Some(window) = handle_clone.get_webview_window("main") {
+                            let _ = window.emit("break-required", ());
+                        }
+
+                        // Auto-pause audio
+                        if let Some(ref mut engine) = *audio_state.engine.lock().unwrap() {
+                            engine.fade_out();
+                        }
+                        continue;
+                    }
 
                     let detector = context_state.detector.lock().unwrap();
                     let browser_url = context_state.browser_url.lock().unwrap().clone();
@@ -93,7 +148,6 @@ pub fn run() {
                             browser_url.as_deref(),
                         );
 
-                        // Check idle
                         if detector.is_idle() {
                             let idle_ctx = audio::DetectedContext {
                                 context_type: audio::ContextType::Idle,
@@ -109,7 +163,7 @@ pub fn run() {
                 }
             });
 
-            log::info!("Attunely started successfully");
+            log::info!("Attunely v{} started successfully", APP_VERSION);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -128,6 +182,15 @@ pub fn run() {
             commands::log_usage,
             commands::accept_safety_warning,
             commands::is_safety_accepted,
+            commands::acknowledge_safety,
+            commands::get_safety_status,
+            commands::discomfort_stop,
+            commands::enable_gamma,
+            commands::confirm_gamma_warning,
+            commands::get_session_info,
+            commands::verify_license,
+            commands::get_license_info,
+            commands::set_license_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

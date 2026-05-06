@@ -35,6 +35,8 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 # Utilities
 chrono = "0.4"
 uuid = { version = "1", features = ["v4"] }
+reqwest = { version = "0.12", features = ["json"] }
+hostname = "0.3"
 
 # WebSocket server (browser extension bridge)
 tokio = { version = "1", features = ["full"] }

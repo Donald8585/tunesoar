@@ -25,6 +25,15 @@ impl AudioState {
     }
 }
 
+/// Beat profile configuration
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct BeatProfile {
+    pub beat_type: BeatType,
+    pub beat_frequency: f32,
+    pub carrier_frequency: f32,
+    pub volume: f32,
+}
+
 /// Core binaural beat types
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum BeatType {

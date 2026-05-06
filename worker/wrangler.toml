@@ -1,0 +1,17 @@
+name = "attunely-api"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "attunely"
+database_id = "CHANGEME"
+
+[vars]
+STRIPE_SECRET_KEY = "CHANGEME"
+STRIPE_WEBHOOK_SECRET = "CHANGEME"
+CLERK_SECRET_KEY = "CHANGEME"
+LICENSE_SECRET = "CHANGEME_64_CHAR_SECRET"
+STRIPE_MONTHLY_PRICE_ID = "CHANGEME"
+STRIPE_LIFETIME_PRICE_ID = "CHANGEME"
+
