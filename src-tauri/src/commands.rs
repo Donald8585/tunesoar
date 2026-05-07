@@ -99,20 +99,20 @@ pub fn detect_context(audio: State<AudioState>, context: State<ContextState>) ->
 // ─── Manual Override ────────────────────────────────────────
 
 #[tauri::command]
-pub fn set_manual_override(ctx: String, context: State<ContextState>) -> Result<String, String> {
+pub fn set_manual_override(context_type: String, context: State<ContextState>) -> Result<String, String> {
     let detector = context.detector.lock().unwrap();
-    if ctx.is_empty() || ctx.eq_ignore_ascii_case("auto") {
+    if context_type.is_empty() || context_type.eq_ignore_ascii_case("auto") {
         detector.enable_auto_detect();
         return Ok("auto".to_string());
     }
-    let ct = match ctx.to_lowercase().as_str() {
+    let ct = match context_type.to_lowercase().as_str() {
         "coding" => ContextType::Coding, "writing" => ContextType::Writing,
         "creative" => ContextType::Creative, "passivewatch"|"video" => ContextType::PassiveWatch,
         "communication"|"comm"|"email" => ContextType::Communication, "meeting" => ContextType::Meeting,
         "relaxation"|"relax"|"meditation" => ContextType::Relaxation, "gaming"|"game" => ContextType::Gaming,
         "sleep"|"sleepprep" => ContextType::SleepPrep, "music" => ContextType::Music,
         "ambient"|"default" => ContextType::Ambient,
-        _ => return Err(format!("Unknown: {}", ctx)),
+        _ => return Err(format!("Unknown: {}", context_type)),
     };
     detector.set_manual_override(Some(ct));
     Ok(format!("{:?}", ct))
