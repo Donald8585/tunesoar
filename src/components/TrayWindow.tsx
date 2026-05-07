@@ -224,6 +224,16 @@ export function TrayWindow() {
               window.location.hash = "#/upgrade";
             }}
           >
+          <a
+            href="/account"
+            className="flex-1 text-center text-xs text-text-secondary hover:text-text-primary py-2 rounded-lg hover:bg-surface-light transition-colors"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.hash = "#/account";
+            }}
+          >
+            Account
+          </a>
             Pro ↗
           </a>
         </div>

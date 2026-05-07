@@ -6,9 +6,10 @@ import { Upgrade } from "./components/Upgrade";
 import { SafetyWarning } from "./components/SafetyWarning";
 import { Onboarding } from "./components/Onboarding";
 import { BreakNotice } from "./components/BreakNotice";
+import { Account } from "./components/Account";
 import { invoke } from "@tauri-apps/api/core";
 
-type Page = "tray" | "settings" | "mappings" | "upgrade";
+type Page = "tray" | "settings" | "mappings" | "upgrade" | "account";
 
 function App() {
   const [page, setPage] = useState<Page>("tray");
@@ -65,6 +66,11 @@ function App() {
           )}
           {page === "upgrade" && (
             <Upgrade
+              onBack={() => { setPage("tray"); window.location.hash = ""; }}
+            />
+          )}
+          {page === "account" && (
+            <Account
               onBack={() => { setPage("tray"); window.location.hash = ""; }}
             />
           )}
