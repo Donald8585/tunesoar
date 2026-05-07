@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" fill="none" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="#6b21ff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#6b21ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wave1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6b21ff"/>
+      <stop offset="100%" stop-color="#47bfff"/>
+    </linearGradient>
+    <linearGradient id="wave2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#47bfff"/>
+      <stop offset="100%" stop-color="#6b21ff"/>
+    </linearGradient>
+    <linearGradient id="dot" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#47bfff"/>
+      <stop offset="100%" stop-color="#863bff"/>
+    </linearGradient>
+  </defs>
+  <!-- Background glow -->
+  <circle cx="256" cy="256" r="220" fill="url(#bg)"/>
+  <!-- Left wave -->
+  <path d="M96 280 Q156 180 236 220 Q316 260 246 300 Q176 340 136 280" stroke="url(#wave1)" stroke-width="10" stroke-linecap="round" fill="none" opacity="0.9"/>
+  <!-- Center energy node -->
+  <circle cx="256" cy="256" r="34" fill="url(#dot)"/>
+  <circle cx="256" cy="256" r="14" fill="#fff" opacity="0.9"/>
+  <!-- Right wave -->
+  <path d="M316 200 Q376 150 416 200 Q456 250 396 280 Q356 300 366 260" stroke="url(#wave2)" stroke-width="7" stroke-linecap="round" fill="none" opacity="0.85"/>
+  <!-- Small echo dot -->
+  <circle cx="420" cy="320" r="10" fill="#863bff" opacity="0.5"/>
+  <!-- Tiny freq dots -->
+  <circle cx="146" cy="340" r="5" fill="#47bfff" opacity="0.3"/>
+  <circle cx="376" cy="160" r="6" fill="#47bfff" opacity="0.25"/>
+</svg>
