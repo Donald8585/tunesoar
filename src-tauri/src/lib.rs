@@ -6,7 +6,6 @@ mod safety;
 mod storage;
 mod tray;
 
-pub use audio::{AudioState, BeatType, ContextType, BeatProfile, DetectedContext};
 
 use audio::AudioState;
 use context::ContextState;

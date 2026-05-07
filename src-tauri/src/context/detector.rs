@@ -1,9 +1,7 @@
-pub mod defaults;
-pub mod platform;
 
 use crate::audio::{ContextType, DetectedContext};
-use chrono::{Local, Timelike};
-use defaults::{default_rules, ContextRule};
+use chrono::Local;
+use super::defaults::default_rules;
 use regex::Regex;
 use std::sync::{Arc, Mutex};
 
