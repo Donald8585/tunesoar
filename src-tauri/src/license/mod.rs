@@ -50,7 +50,6 @@ impl LicenseState {
             "delta_band" => is_pro,
             "gamma_band" => is_pro,
             "sleep_mode" => is_pro,
-            "browser_url_detection" => is_pro,
             "custom_mappings" => is_pro,
             "usage_analytics" => is_pro,
             _ => true, // Free features default to available

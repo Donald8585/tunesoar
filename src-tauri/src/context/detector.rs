@@ -3,7 +3,7 @@ use crate::audio::{ContextType, DetectedContext};
 use chrono::Local;
 use super::defaults::default_rules;
 use regex::Regex;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 /// Context detector — matches `"<process>: <window_title>"` against regex rules.
 pub struct ContextDetector {
