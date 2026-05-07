@@ -38,6 +38,7 @@ uuid = { version = "1", features = ["v4"] }
 reqwest = { version = "0.12", features = ["json"] }
 hostname = "0.3"
 regex = "1"
+regex = "1"
 
 # Active window detection (platform-specific)
 [target.'cfg(target_os = "windows")'.dependencies]

@@ -1,9 +1,11 @@
+pub mod defaults;
+pub mod platform;
 
 use crate::audio::{ContextType, DetectedContext};
-use chrono::Local;
-use super::defaults::default_rules;
+use chrono::{Local, Timelike};
+use defaults::{default_rules, ContextRule};
 use regex::Regex;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 /// Context detector — matches `"<process>: <window_title>"` against regex rules.
 pub struct ContextDetector {
@@ -46,6 +48,8 @@ impl ContextDetector {
             current_context: Mutex::new(None),
             last_active: Mutex::new(chrono::Utc::now().timestamp_millis()),
             other_audio_active: Mutex::new(false),
+            manual_override: Mutex::new(None),
+            auto_detect_enabled: Mutex::new(true),
         }
     }
 
@@ -122,5 +126,16 @@ impl ContextDetector {
     /// Update last-active timestamp.
     pub fn mark_active(&self) {
         *self.last_active.lock().unwrap() = chrono::Utc::now().timestamp_millis();
+    }
+}
+
+impl ContextDetector {
+    pub fn set_manual_override(&self, ctx: Option<ContextType>) {
+        *self.manual_override.lock().unwrap() = ctx;
+        *self.auto_detect_enabled.lock().unwrap() = ctx.is_none();
+    }
+    pub fn enable_auto_detect(&self) {
+        *self.manual_override.lock().unwrap() = None;
+        *self.auto_detect_enabled.lock().unwrap() = true;
     }
 }

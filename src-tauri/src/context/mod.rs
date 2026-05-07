@@ -1,4 +1,5 @@
 pub mod defaults;
+pub mod defaults;
 pub mod detector;
 pub mod platform;
 
