@@ -66,8 +66,6 @@ pub fn get_status(
         volume,
         is_playing,
         is_paused,
-        auto_detect_enabled: *context.detector.lock().unwrap().auto_detect_enabled.lock().unwrap(),
-        manual_override: context.detector.lock().unwrap().manual_override.lock().unwrap().map(|c| format!("{:?}", c)),
         auto_detect_enabled: auto_enabled,
         manual_override: manual_ov.map(|c| format!("{:?}", c)),
     })
@@ -198,30 +196,6 @@ pub fn resume_auto_detect(
 }
 
 // ─── Prefs / Mappings ──────────────────────────────────────
-// ─── Manual Override ──
-#[tauri::command]
-pub fn set_manual_override(context_type: String, context: State<ContextState>) -> Result<String, String> {
-    let detector = context.detector.lock().unwrap();
-    if context_type.is_empty() || context_type.eq_ignore_ascii_case("auto") {
-        detector.enable_auto_detect(); return Ok("auto".to_string());
-    }
-    let ct = match context_type.to_lowercase().as_str() {
-        "coding" => ContextType::Coding, "writing" => ContextType::Writing,
-        "creative" => ContextType::Creative, "passivewatch"|"video" => ContextType::PassiveWatch,
-        "communication"|"comm"|"email" => ContextType::Communication, "meeting" => ContextType::Meeting,
-        "relaxation"|"relax"|"meditation" => ContextType::Relaxation, "gaming"|"game" => ContextType::Gaming,
-        "sleep"|"sleepprep" => ContextType::SleepPrep, "music" => ContextType::Music,
-        "ambient"|"default" => ContextType::Ambient,
-        _ => return Err(format!("Unknown: {}", context_type)),
-    };
-    detector.set_manual_override(Some(ct));
-    Ok(format!("{:?}", ct))
-}
-#[tauri::command]
-pub fn resume_auto_detect(context: State<ContextState>) -> Result<String, String> {
-    context.detector.lock().unwrap().enable_auto_detect();
-    Ok("auto".to_string())
-}
 
 #[tauri::command]
 pub fn get_prefs(storage: State<StorageState>) -> Result<UserPrefs, String> {
