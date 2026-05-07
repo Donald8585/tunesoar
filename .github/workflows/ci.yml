@@ -2,9 +2,9 @@ name: CI — Build Check
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   # ── Linux build check (fast, covers most issues) ───────
