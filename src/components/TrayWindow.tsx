@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { CurrentStatus } from "../types";
 import { CONTEXT_LABELS, BEAT_PROFILES, type ContextType, type BeatType } from "../types";
-import { Play, Pause, Activity, Waves, Volume2 } from "lucide-react";
+import { Play, Pause, Activity, Volume2 } from "lucide-react";
 import { Logo } from "./Logo";
 import { Slider } from "./ui/slider";
 import { Button } from "./ui/button";
