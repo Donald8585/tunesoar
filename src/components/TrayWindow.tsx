@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { CurrentStatus } from "../types";
 import { CONTEXT_LABELS, BEAT_PROFILES, type ContextType, type BeatType } from "../types";
 import { Play, Pause, Activity, Waves, Volume2 } from "lucide-react";
+import { Logo } from "./Logo";
 import { Slider } from "./ui/slider";
 import { Button } from "./ui/button";
 
@@ -57,7 +58,7 @@ export function TrayWindow() {
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Waves className="w-5 h-5 text-trance-500" />
+            <Logo size={22} />
             <h1 className="text-lg font-semibold text-text-primary">Attunely</h1>
           </div>
           <Button

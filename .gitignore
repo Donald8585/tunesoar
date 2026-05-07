@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 src-tauri/target
+
+# Tauri updater signing keys (DO NOT COMMIT)
+scripts/attunely-updater.key
+scripts/attunely-updater.key.pub
+worker/node_modules
+worker/.wrangler
