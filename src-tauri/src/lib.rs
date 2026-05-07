@@ -5,7 +5,6 @@ mod license;
 mod safety;
 mod storage;
 mod tray;
-mod ws;
 
 // Re-exports for testing
 pub use audio::{AudioState, BeatType, ContextType, BeatProfile, DetectedContext};
@@ -15,7 +14,6 @@ use context::ContextState;
 use license::LicenseState;
 use safety::SafetyState;
 use storage::StorageState;
-use ws::WsState;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::Manager;
@@ -44,7 +42,6 @@ pub fn run() {
             // Initialize states
             app.manage(AudioState::new());
             app.manage(ContextState::new());
-            app.manage(WsState::new());
             app.manage(SafetyState::new(APP_VERSION.to_string()));
             app.manage(LicenseState::new());
 
@@ -52,34 +49,8 @@ pub fn run() {
             let handle = app.handle().clone();
             tray::create_tray(&handle).expect("Failed to create tray");
 
-            // Start WebSocket server for browser extension
-            let ws_state = app.state::<WsState>();
-            let auth_token = ws_state.auth_token.lock().unwrap().clone();
-            let (url_tx, mut url_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
-
-            let context_state = app.state::<ContextState>();
-            let browser_url = context_state.browser_url.clone();
-
-            std::thread::spawn(move || {
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(async move {
-                    while let Some(url) = url_rx.recv().await {
-                        let mut guard = browser_url.lock().unwrap();
-                        *guard = Some(url);
-                    }
-                });
             });
 
-            let ws_token = auth_token;
-            let (ws_tx, _ws_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
-            std::thread::spawn(move || {
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                let server = ws::server::WebSocketServer::new();
-                rt.block_on(async move {
-                    if let Err(e) = server.start(ws_tx, ws_token).await {
-                        log::error!("WebSocket server error: {}", e);
-                    }
-                });
             });
 
             // Start periodic context detection (every 3 seconds)
@@ -139,13 +110,11 @@ pub fn run() {
                     }
 
                     let detector = context_state.detector.lock().unwrap();
-                    let browser_url = context_state.browser_url.lock().unwrap().clone();
 
                     if let Ok((window_title, app_name)) = context::platform::get_active_window() {
                         let detected = detector.detect(
                             &window_title,
                             &app_name,
-                            browser_url.as_deref(),
                         );
 
                         if detector.is_idle() {
@@ -178,8 +147,6 @@ pub fn run() {
             commands::get_mappings,
             commands::save_mapping,
             commands::delete_mapping,
-            commands::get_ws_token,
-            commands::set_browser_url,
             commands::get_usage_stats,
             commands::log_usage,
             commands::accept_safety_warning,

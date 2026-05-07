@@ -1,12 +1,10 @@
 use crate::audio::{AudioState, ContextType, DetectedContext, update_beat_for_context};
 use crate::context::ContextState;
-use crate::context::detector::ContextDetector;
 use crate::license::LicenseState;
 use crate::safety::SafetyState;
 use crate::safety::gate::{self, SafetyAcknowledgment};
 use crate::storage::db::{ContextMapping, UserPrefs, UsageLog};
 use crate::storage::StorageState;
-use crate::ws::WsState;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::State;
@@ -107,7 +105,6 @@ pub fn detect_context(
     context: State<ContextState>,
 ) -> Result<DetectedContext, String> {
     let detector = context.detector.lock().unwrap();
-    let browser_url = context.browser_url.lock().unwrap().clone();
 
     // Get active window
     let (window_title, app_name) = match crate::context::platform::get_active_window() {
@@ -118,7 +115,7 @@ pub fn detect_context(
         }
     };
 
-    let detected = detector.detect(&window_title, &app_name, browser_url.as_deref());
+    let detected = detector.detect(&window_title, &app_name, None);
 
     // Check idle
     if detector.is_idle() {
@@ -199,16 +196,9 @@ pub fn delete_mapping(id: i64, storage: State<StorageState>) -> Result<(), Strin
 
 /// Get WebSocket auth token (for browser extension pairing)
 #[tauri::command]
-pub fn get_ws_token(ws: State<WsState>) -> Result<String, String> {
-    Ok(ws.auth_token.lock().unwrap().clone())
-}
 
 /// Set browser URL manually (when WebSocket is not available)
 #[tauri::command]
-pub fn set_browser_url(url: String, context: State<ContextState>) -> Result<(), String> {
-    *context.browser_url.lock().unwrap() = Some(url);
-    Ok(())
-}
 
 /// Get usage statistics
 #[tauri::command]
