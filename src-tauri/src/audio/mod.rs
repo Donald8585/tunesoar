@@ -125,7 +125,6 @@ pub struct DetectedContext {
     pub context_type: ContextType,
     pub app_name: String,
     pub window_title: String,
-    pub url: Option<String>,
     pub detected_at: i64,
 }
 

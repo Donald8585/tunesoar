@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { CurrentStatus } from "../types";
 import { CONTEXT_LABELS, BEAT_PROFILES, type ContextType, type BeatType } from "../types";
-import { Play, Pause, Activity, Volume2 } from "lucide-react";
+import { Play, Pause, Activity, Volume2, Settings2, RefreshCw } from "lucide-react";
 import { Logo } from "./Logo";
 import { Slider } from "./ui/slider";
 import { Button } from "./ui/button";
@@ -10,12 +10,14 @@ import { Button } from "./ui/button";
 export function TrayWindow() {
   const [status, setStatus] = useState<CurrentStatus | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [overrideMode, setOverrideMode] = useState("auto");
 
   const fetchStatus = useCallback(async () => {
     try {
       const s = await invoke<CurrentStatus>("get_status");
       setStatus(s);
       setIsPlaying(s.is_playing && !s.is_paused);
+      setOverrideMode(s.manual_override || (s.auto_detect_enabled ? "auto" : ""));
     } catch (e) {
       console.error("Failed to get status:", e);
     }
@@ -43,6 +45,16 @@ export function TrayWindow() {
     } catch (e) {
       console.error("Volume change failed:", e);
     }
+  };
+
+  const handleManualOverride = async (ctx: string) => {
+    try { await invoke("set_manual_override", { contextType: ctx }); fetchStatus(); }
+    catch (e) { console.error("Override failed:", e); }
+  };
+
+  const handleResumeAuto = async () => {
+    try { await invoke("resume_auto_detect"); fetchStatus(); }
+    catch (e) { console.error("Resume auto failed:", e); }
   };
 
   const contextType = (status?.context_type ?? "Ambient") as ContextType;
@@ -103,6 +115,37 @@ export function TrayWindow() {
         </div>
       </div>
 
+      {/* Manual Override */}
+      <div className="px-5 pb-3">
+        <div className="flex items-center gap-2">
+          <Settings2 className="w-3.5 h-3.5 text-text-secondary" />
+          <span className="text-xs text-text-secondary">Mode</span>
+          <div className="flex-1" />
+          {!status?.auto_detect_enabled && (
+            <Button size="sm" variant="ghost" onClick={handleResumeAuto}
+              className="h-7 px-2 text-xs gap-1">
+              <RefreshCw className="w-3 h-3" />
+              Auto
+            </Button>
+          )}
+          <select
+            value={overrideMode}
+            onChange={(e) => handleManualOverride(e.target.value)}
+            className="h-7 px-2 rounded-lg bg-surface-light border border-surface-lighter text-xs text-text-primary cursor-pointer outline-none focus:border-trance-500"
+          >
+            <option value="auto">🔄 Auto-Detect</option>
+            <option value="coding">💻 Coding</option>
+            <option value="writing">✍️ Writing</option>
+            <option value="creative">🎨 Creative</option>
+            <option value="communication">💬 Chat</option>
+            <option value="gaming">🎮 Gaming</option>
+            <option value="relaxation">🧘 Relax</option>
+            <option value="sleep">🌙 Sleep</option>
+            <option value="ambient">🌿 Ambient</option>
+          </select>
+        </div>
+      </div>
+
       {/* Volume Control */}
       <div className="px-5 pb-4">
         <div className="flex items-center gap-3 mb-2">
@@ -158,7 +201,6 @@ export function TrayWindow() {
             className="flex-1 text-center text-xs text-text-secondary hover:text-text-primary py-2 rounded-lg hover:bg-surface-light transition-colors"
             onClick={(e) => {
               e.preventDefault();
-              // Navigate to settings
               window.location.hash = "#/settings";
             }}
           >

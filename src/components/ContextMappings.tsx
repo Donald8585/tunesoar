@@ -14,7 +14,7 @@ export function ContextMappings({ onBack }: Props) {
   const [showAdd, setShowAdd] = useState(false);
 
   const [newPattern, setNewPattern] = useState("");
-  const [newType, setNewType] = useState<"app" | "url">("app");
+  const [newType, setNewType] = useState<"app" | "window">("app");
   const [newContext, setNewContext] = useState<ContextType>("Ambient");
   const [newBeat, setNewBeat] = useState<BeatType>("Alpha");
   const [newFreq, setNewFreq] = useState(10);
@@ -98,11 +98,11 @@ export function ContextMappings({ onBack }: Props) {
             <div className="flex gap-2">
               <select
                 value={newType}
-                onChange={(e) => setNewType(e.target.value as "app" | "url")}
+                onChange={(e) => setNewType(e.target.value as "app" | "window")}
                 className="flex-1 h-9 px-3 rounded-lg bg-surface border border-surface-lighter text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-trance-500"
               >
                 <option value="app">App Name</option>
-                <option value="url">URL Pattern</option>
+                <option value="window">Window Title</option>
               </select>
               <input
                 type="text"

@@ -20,7 +20,6 @@ export interface DetectedContext {
   context_type: ContextType;
   app_name: string;
   window_title: string;
-  url: string | null;
   detected_at: number;
 }
 
@@ -28,12 +27,13 @@ export interface CurrentStatus {
   context_type: string;
   app_name: string;
   window_title: string;
-  url: string | null;
   beat_type: string;
   beat_frequency: number;
   volume: number;
   is_playing: boolean;
   is_paused: boolean;
+  auto_detect_enabled: boolean;
+  manual_override: string | null;
 }
 
 export interface UserPrefs {
@@ -50,7 +50,7 @@ export interface UserPrefs {
 export interface ContextMapping {
   id?: number;
   pattern: string;
-  pattern_type: 'app' | 'url';
+  pattern_type: 'app' | 'window';
   context_type: string;
   beat_type: string;
   beat_frequency: number;
