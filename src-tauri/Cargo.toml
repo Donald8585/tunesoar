@@ -11,8 +11,10 @@ rust-version = "1.77.2"
 [lib]
 name = "tunesoar_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-log = "2"
@@ -23,16 +25,25 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 log = "0.4"
 env_logger = "0.11"
+
 # Audio
 cpal = "0.15"
+
 # Storage
 rusqlite = { version = "0.31", features = ["bundled"] }
+
 # Utilities
 chrono = "0.4"
 uuid = { version = "1", features = ["v4"] }
 reqwest = { version = "0.12", features = ["json"] }
 hostname = "0.3"
 regex = "1"
+
+# WebSocket server (browser extension bridge)
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
+
 # Active window detection (platform-specific)
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.58", features = [
@@ -41,12 +52,15 @@ windows = { version = "0.58", features = [
     "Win32_System_Threading",
     "Win32_Graphics_Gdi",
 ] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"
 objc-foundation = "0.1"
 core-foundation = "0.9"
+
 [target.'cfg(target_os = "linux")'.dependencies]
 x11rb = { version = "0.13", features = ["allow-unsafe-code"] }
+
 [profile.release]
 panic = "abort"
 codegen-units = 1
