@@ -5,7 +5,7 @@ import Stripe from "stripe";
 import {
   HOME_PAGE, PRICING_PAGE, ACCOUNT_PAGE,
   PRIVACY_PAGE, TERMS_PAGE, SAFETY_PAGE,
-} from "../../landing/pages";
+} from "./pages";
 
 interface Env {
   DB: D1Database;
