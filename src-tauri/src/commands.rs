@@ -131,25 +131,18 @@ pub fn detect_context(
 // ─── Manual override ───────────────────────────────────────
 
 /// Set a manual beat override (disables auto-detection).
-/// Give `None` / empty string to clear the override and re-enable auto-detect.
+/// Pass "auto" or empty to re-enable auto-detect.
 #[tauri::command]
 pub fn set_manual_override(
     context_type: String,
     context: State<ContextState>,
     audio: State<AudioState>,
 ) -> Result<String, String> {
-    let detector = context.detector.lock().unwrap();
-
     if context_type.is_empty() || context_type.eq_ignore_ascii_case("auto") {
-        // Re-enable auto-detection
-        detector.enable_auto_detect();
-        // Trigger an immediate re-detect
-        drop(detector);
-        let _ = detect_context(audio, context);
+        context.detector.lock().unwrap().enable_auto_detect();
         return Ok("auto".to_string());
     }
 
-    // Parse the context type string
     let ctx = match context_type.to_lowercase().as_str() {
         "coding" => ContextType::Coding,
         "writing" => ContextType::Writing,
@@ -165,17 +158,16 @@ pub fn set_manual_override(
         _ => return Err(format!("Unknown context type: {}", context_type)),
     };
 
-    detector.set_manual_override(Some(ctx));
-
-    // Apply the new beat immediately
     let detected = DetectedContext {
         context_type: ctx,
         app_name: "Manual".to_string(),
         window_title: format!("Manual override: {}", context_type),
         detected_at: chrono::Utc::now().timestamp_millis(),
     };
+
+    context.detector.lock().unwrap().set_manual_override(Some(ctx));
     update_beat_for_context(&audio, &detected);
-    *detector.current_context.lock().unwrap() = Some(detected);
+    *context.detector.lock().unwrap().current_context.lock().unwrap() = Some(detected);
 
     Ok(format!("{:?}", ctx))
 }
@@ -184,12 +176,8 @@ pub fn set_manual_override(
 #[tauri::command]
 pub fn resume_auto_detect(
     context: State<ContextState>,
-    audio: State<AudioState>,
 ) -> Result<String, String> {
-    let detector = context.detector.lock().unwrap();
-    detector.enable_auto_detect();
-    drop(detector);
-    let _ = detect_context(audio, context);
+    context.detector.lock().unwrap().enable_auto_detect();
     Ok("auto".to_string())
 }
 
