@@ -140,7 +140,7 @@ export const PRICING_PAGE = layout("Pricing", `
       <li>All 5 beat profiles</li>
       <li>Custom context mappings</li>
       <li>Sleep mode</li>
-      <li>Browser extension</li>
+      <li>Manual override toggle</li>
       <li>Priority support</li>
       <li>2s crossfade engine</li>
     </ul>

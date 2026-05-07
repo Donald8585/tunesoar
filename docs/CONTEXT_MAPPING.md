@@ -143,8 +143,6 @@ Detected **primarily via URLs** (see URL mappings below), not by desktop app nam
 
 ## Default URL → Context Mappings
 
-These are detected by the browser extension and transmitted to the desktop app via local WebSocket.
-
 ### Video / Streaming → PassiveWatch
 
 | URL Pattern | Context | Beat |
@@ -237,7 +235,6 @@ The complete default context → beat mapping used when no custom mapping overri
 When TuneSoar detects a new context, it evaluates signals in this order:
 
 ```
-1. URL (browser extension)
    └─ Most specific signal. If a URL is available, it is checked first.
       YouTube has additional keyword-based sub-matching.
 
@@ -359,8 +356,6 @@ Each custom mapping consists of:
 
 ### Browser Extension to Desktop App
 
-1. The browser extension reads `window.location.hostname` from the active tab
-2. The hostname is sent over local WebSocket (`ws://127.0.0.1:47821`) as `URL:hostname`
 3. The desktop app performs a **case-insensitive substring match** against all URL mappings
 4. The first matching pattern wins (default mappings checked first, then custom mappings)
 
@@ -609,7 +604,6 @@ Here's what happens in a typical detection cycle (every 3 seconds):
 ## Related Documents
 
 - [SAFETY.md](./SAFETY.md) — Medical disclaimer, contraindications, emergency procedures
-- [PRIVACY.md](./PRIVACY.md) — Data collection, telemetry, browser extension privacy
 - [README.md](../README.md) — Project overview, tech stack, getting started
 
 ---

@@ -40,7 +40,6 @@ export function Upgrade({ onBack }: Props) {
     "All 5 beat profiles (Delta, Theta, Alpha, Beta, Gamma)",
     "Unlimited custom context mappings",
     "Sleep mode (22:00-06:00 auto Delta)",
-    "Browser extension URL detection",
     "Priority audio engine",
     "Advanced statistics & insights",
     "Telemetry & usage dashboard",

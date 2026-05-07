@@ -12,7 +12,6 @@ tunesoar/
 │   │   ├── context/    # Active window detection + context mapping
 │   │   ├── storage/    # SQLite (user prefs, mappings, usage logs)
 │   │   ├── tray/       # System tray integration
-│   │   ├── ws/         # WebSocket server (browser extension bridge)
 │   │   ├── commands.rs # Tauri IPC commands
 │   │   ├── lib.rs      # App setup + periodic detection loop
 │   │   └── main.rs     # Entry point
@@ -26,12 +25,6 @@ tunesoar/
 │   │   ├── Upgrade.tsx       # Pro pricing page
 │   │   └── SafetyWarning.tsx # Mandatory safety acknowledgment
 │   └── types/          # Shared TypeScript types
-├── browser-extension/  # Chrome + Firefox MV3 extension
-│   ├── manifest.json
-│   ├── background.js   # WebSocket client, tab monitoring
-│   ├── popup.html      # Auth token configuration
-│   └── popup.js
-└── package.json
 ```
 
 ## Tech Stack
@@ -45,7 +38,6 @@ tunesoar/
 | Audio Engine | `cpal` — pure DSP sine wave generation |
 | Storage | SQLite via `rusqlite` |
 | Window Detection | Windows: `windows-rs` / macOS: `core-foundation` / Linux: `x11rb` |
-| Browser Bridge | WebSocket server (localhost:47821) + Chrome/Firefox extension |
 
 ## Features
 
@@ -63,7 +55,7 @@ tunesoar/
 | Tier | Price | Features |
 |------|-------|----------|
 | Free | $0 | 5 contexts, 3 beat profiles, default mappings |
-| Pro Monthly | $6.99/mo | All 12 contexts, 5 profiles, custom mappings, sleep mode, browser extension |
+| Pro Monthly | $6.99/mo | All 12 contexts, 5 profiles, custom mappings, sleep mode |
 | Lifetime | $89 | Everything, forever |
 
 ## Getting Started
@@ -103,8 +95,6 @@ Outputs:
 
 1. Open `chrome://extensions` or `about:debugging#/runtime/this-firefox`
 2. Enable "Developer mode"
-3. Load unpacked: select `browser-extension/` folder
-4. Paste auth token from TuneSoar Settings → Browser Extension
 
 ## Safety
 
