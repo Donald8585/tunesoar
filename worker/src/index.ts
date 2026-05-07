@@ -256,7 +256,7 @@ app.post("/deactivate", async (c) => {
 // ─────────────────────────────────────────────────────────────────────────
 
 const REPO_OWNER = "Donald8585";
-const REPO_NAME = "attunely";
+const REPO_NAME = "tunesoar";
 
 function assetPattern(platform: string, arch: string): RegExp {
   const patterns: Record<string, RegExp> = {
