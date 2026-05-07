@@ -49,9 +49,6 @@ pub fn run() {
             let handle = app.handle().clone();
             tray::create_tray(&handle).expect("Failed to create tray");
 
-            });
-
-            });
 
             // Start periodic context detection (every 3 seconds)
             let handle_clone = app.handle().clone();
