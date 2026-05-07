@@ -1,4 +1,4 @@
-// ─── Core Types for Attunely ───────────────────────────────────
+// ─── Core Types for TuneSoar ───────────────────────────────────
 
 export type BeatType = 'Delta' | 'Theta' | 'Alpha' | 'Beta' | 'Gamma';
 

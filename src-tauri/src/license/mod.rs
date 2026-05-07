@@ -33,7 +33,7 @@ impl LicenseState {
     pub fn new() -> Self {
         Self {
             info: Mutex::new(LicenseInfo::default()),
-            verification_url: "https://api.attunely.app/verify-license".to_string(),
+            verification_url: "https://api.tunesoar.app/verify-license".to_string(),
         }
     }
 

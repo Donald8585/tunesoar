@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    attunely_lib::run();
+    tunesoar_lib::run();
 }

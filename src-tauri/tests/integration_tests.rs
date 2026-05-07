@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use attunely_lib::audio::{BeatProfile, BeatType, ContextType};
+    use tunesoar_lib::audio::{BeatProfile, BeatType, ContextType};
 
     // ─── Binaural Frequency Accuracy ───────────────────────────
 

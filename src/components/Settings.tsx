@@ -100,7 +100,7 @@ export function Settings({ onBack, onGetWsToken }: Props) {
               checked={prefs.auto_start}
               onChange={(v) => update("auto_start", v.toString())}
               label="Auto-start on login"
-              description="Start Attunely when you log into your computer"
+              description="Start TuneSoar when you log into your computer"
             />
             <Switch
               checked={prefs.minimize_to_tray}
@@ -119,7 +119,7 @@ export function Settings({ onBack, onGetWsToken }: Props) {
               checked={prefs.telemetry_opt_in}
               onChange={(v) => update("telemetry_opt_in", v.toString())}
               label="Usage Telemetry"
-              description="Opt-in anonymous usage data helps us improve Attunely"
+              description="Opt-in anonymous usage data helps us improve TuneSoar"
             />
           </div>
         </section>

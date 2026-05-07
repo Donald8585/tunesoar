@@ -70,8 +70,8 @@ export function SafetyWarning({ onComplete }: Props) {
           </h1>
           <p className="text-sm text-text-secondary">
             {status.requires_reack
-              ? "Attunely has been updated. Please review the updated safety information."
-              : "Please read this important safety information before using Attunely"}
+              ? "TuneSoar has been updated. Please review the updated safety information."
+              : "Please read this important safety information before using TuneSoar"}
           </p>
         </div>
 
@@ -135,7 +135,7 @@ export function SafetyWarning({ onComplete }: Props) {
                 <p className="font-medium text-text-primary mb-1">Not a Medical Device</p>
                 <p>
                   This app is <strong>not a medical device</strong>. Claims have not been evaluated by
-                  the FDA, CE, or HKFDA. Attunely is designed to accompany relaxation and focus —
+                  the FDA, CE, or HKFDA. TuneSoar is designed to accompany relaxation and focus —
                   it does not diagnose, treat, cure, or prevent any disease or condition.
                 </p>
               </div>
@@ -145,7 +145,7 @@ export function SafetyWarning({ onComplete }: Props) {
             <div className="flex items-start gap-3 p-3 rounded-lg bg-trance-600/10 border border-trance-600/20">
               <Shield className="w-5 h-5 text-trance-400 mt-0.5 shrink-0" />
               <div className="text-sm text-text-secondary leading-relaxed">
-                <p className="font-medium text-trance-400 mb-1">How Attunely Protects You</p>
+                <p className="font-medium text-trance-400 mb-1">How TuneSoar Protects You</p>
                 <ul className="space-y-1 list-disc pl-4">
                   <li>Volume hard-capped at 25% — cannot be exceeded</li>
                   <li>Gamma frequencies (30-40 Hz) disabled by default</li>

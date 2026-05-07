@@ -16,8 +16,8 @@ export function Upgrade({ onBack }: Props) {
     try {
       // Open Stripe checkout in browser
       const checkoutUrl = plan === "monthly"
-        ? "https://trancelab.ai/attunely/checkout/monthly"
-        : "https://trancelab.ai/attunely/checkout/lifetime";
+        ? "https://trancelab.ai/tunesoar/checkout/monthly"
+        : "https://trancelab.ai/tunesoar/checkout/lifetime";
       await invoke("shell:open", { path: checkoutUrl });
     } catch (e) {
       console.error("Failed to open checkout:", e);

@@ -59,7 +59,7 @@ export function TrayWindow() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Logo size={22} />
-            <h1 className="text-lg font-semibold text-text-primary">Attunely</h1>
+            <h1 className="text-lg font-semibold text-text-primary">TuneSoar</h1>
           </div>
           <Button
             size="sm"

@@ -1,11 +1,11 @@
-name = "attunely-api"
+name = "tunesoar-api"
 main = "src/index.ts"
 compatibility_date = "2025-05-01"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "attunely"
-database_id = "dc3e5c36-cd09-4410-b084-22eb8dad9c6b"
+database_name = "tunesoar"
+database_id = "e755a90e-13bf-46e7-9b67-4e8fccbda3aa"
 
 [vars]
 # Public / non-sensitive vars only.

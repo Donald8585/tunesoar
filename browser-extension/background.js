@@ -1,5 +1,5 @@
-// Attunely Bridge — Background Service Worker
-// Pipes active tab URL to Attunely desktop app via WebSocket on localhost:47821
+// TuneSoar Bridge — Background Service Worker
+// Pipes active tab URL to TuneSoar desktop app via WebSocket on localhost:47821
 
 const WS_URL = "ws://localhost:47821";
 let ws = null;
@@ -10,31 +10,31 @@ const MAX_RECONNECT_DELAY = 30000; // 30 seconds
 
 // Get auth token from storage
 async function loadToken() {
-  const result = await chrome.storage.local.get("attunely_auth_token");
-  authToken = result.attunely_auth_token || "";
+  const result = await chrome.storage.local.get("tunesoar_auth_token");
+  authToken = result.tunesoar_auth_token || "";
   return authToken;
 }
 
 // Save auth token
 async function saveToken(token) {
   authToken = token;
-  await chrome.storage.local.set({ attunely_auth_token: token });
+  await chrome.storage.local.set({ tunesoar_auth_token: token });
 }
 
-// Connect to Attunely desktop WebSocket
+// Connect to TuneSoar desktop WebSocket
 function connect() {
   if (ws && ws.readyState === WebSocket.OPEN) return;
 
   try {
     ws = new WebSocket(WS_URL);
   } catch (e) {
-    console.debug("[Attunely] WebSocket connection failed, retrying...");
+    console.debug("[TuneSoar] WebSocket connection failed, retrying...");
     scheduleReconnect();
     return;
   }
 
   ws.onopen = async () => {
-    console.log("[Attunely] Connected to desktop app");
+    console.log("[TuneSoar] Connected to desktop app");
     reconnectAttempts = 0;
 
     // Authenticate
@@ -48,26 +48,26 @@ function connect() {
 
   ws.onmessage = (event) => {
     const msg = event.data;
-    console.debug("[Attunely] Message:", msg);
+    console.debug("[TuneSoar] Message:", msg);
 
     if (msg === "AUTH_OK") {
-      console.log("[Attunely] Authenticated successfully");
+      console.log("[TuneSoar] Authenticated successfully");
       return;
     }
 
     if (msg.startsWith("ERROR:")) {
-      console.warn("[Attunely] Server error:", msg);
+      console.warn("[TuneSoar] Server error:", msg);
     }
   };
 
   ws.onclose = () => {
-    console.log("[Attunely] Disconnected");
+    console.log("[TuneSoar] Disconnected");
     ws = null;
     scheduleReconnect();
   };
 
   ws.onerror = (err) => {
-    console.debug("[Attunely] Connection error (desktop app may not be running)");
+    console.debug("[TuneSoar] Connection error (desktop app may not be running)");
     ws = null;
     scheduleReconnect();
   };
@@ -89,7 +89,7 @@ async function getCurrentTabUrl() {
       return tab.url;
     }
   } catch (e) {
-    console.debug("[Attunely] Could not get tab URL:", e);
+    console.debug("[TuneSoar] Could not get tab URL:", e);
   }
   return null;
 }

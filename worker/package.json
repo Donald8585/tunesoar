@@ -1,12 +1,12 @@
 {
-  "name": "attunely-api",
+  "name": "tunesoar-api",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:init": "wrangler d1 execute attunely --file=./schema.sql",
+    "db:init": "wrangler d1 execute tunesoar --file=./schema.sql",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

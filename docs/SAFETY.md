@@ -2,7 +2,7 @@
 
 **PLEASE READ THIS DOCUMENT CAREFULLY BEFORE USING ATTUNELY.**
 
-Attunely generates binaural beats — rhythmic audio frequencies created by playing slightly different tones in each ear. The brain perceives a "beat" at the difference frequency (e.g., 200 Hz in the left ear and 210 Hz in the right ear creates a perceived 10 Hz Alpha beat).
+TuneSoar generates binaural beats — rhythmic audio frequencies created by playing slightly different tones in each ear. The brain perceives a "beat" at the difference frequency (e.g., 200 Hz in the left ear and 210 Hz in the right ear creates a perceived 10 Hz Alpha beat).
 
 While many people use binaural beats without issue, **these rhythmic audio stimuli carry real physiological risks** for certain individuals. This document explains those risks and the safety measures we take to protect you.
 
@@ -10,9 +10,9 @@ While many people use binaural beats without issue, **these rhythmic audio stimu
 
 ## Medical Disclaimer
 
-**Attunely is not a medical device.** It has not been evaluated or approved by the U.S. Food and Drug Administration (FDA), the European Medicines Agency (EMA), the Hong Kong Department of Health (HKFDA), or any other regulatory body. Attunely is not intended to diagnose, treat, cure, or prevent any disease, condition, or disorder.
+**TuneSoar is not a medical device.** It has not been evaluated or approved by the U.S. Food and Drug Administration (FDA), the European Medicines Agency (EMA), the Hong Kong Department of Health (HKFDA), or any other regulatory body. TuneSoar is not intended to diagnose, treat, cure, or prevent any disease, condition, or disorder.
 
-Use of Attunely is **entirely at your own risk**. The developers (`TranceLab`) and its affiliates assume no liability for any injury, loss, or damage arising from the use of this software.
+Use of TuneSoar is **entirely at your own risk**. The developers (`TranceLab`) and its affiliates assume no liability for any injury, loss, or damage arising from the use of this software.
 
 ---
 
@@ -92,13 +92,13 @@ Seek immediate medical attention (call emergency services) if you experience:
 
 ---
 
-## How Attunely Protects You
+## How TuneSoar Protects You
 
 We have built multiple layers of safety into the application. **No software safeguard is a substitute for your own judgment and medical advice.** That said, here is what we do:
 
 ### 1. Volume Hard Cap (25% of System Output)
 
-Attunely **physically cannot exceed 25%** of your system's maximum volume. The volume slider in the UI maps 0–100% display to 0–25% of actual output. This is enforced server-side in the Rust audio engine — it cannot be bypassed by the UI or any IPC call.
+TuneSoar **physically cannot exceed 25%** of your system's maximum volume. The volume slider in the UI maps 0–100% display to 0–25% of actual output. This is enforced server-side in the Rust audio engine — it cannot be bypassed by the UI or any IPC call.
 
 - **Default volume:** 10% of system output
 - **Maximum volume:** 25% of system output
@@ -119,7 +119,7 @@ The `BinauralEngine` implements `fade_in()` and `fade_out()` methods that ramp v
 
 ### 4. Auto-Pause During Calls & Music
 
-Attunely **automatically pauses** binaural beat playback when it detects:
+TuneSoar **automatically pauses** binaural beat playback when it detects:
 
 - **Meeting apps:** Zoom, Google Meet, Microsoft Teams, Skype, FaceTime, Webex, etc.
 - **Music apps:** Spotify, Apple Music, Tidal, YouTube Music, VLC, etc.
@@ -129,21 +129,21 @@ When auto-paused, the frequency is set to **0 Hz** (silent) and the UI displays 
 
 ### 5. Idle Fade-Out
 
-If no user activity is detected for **5 continuous minutes**, Attunely fades out the audio. This prevents prolonged unconscious exposure and saves system resources. Playback resumes automatically when activity is detected again.
+If no user activity is detected for **5 continuous minutes**, TuneSoar fades out the audio. This prevents prolonged unconscious exposure and saves system resources. Playback resumes automatically when activity is detected again.
 
 ### 6. Mandatory Safety Acknowledgment
 
-On first launch, Attunely presents a **mandatory safety dialog** that cannot be dismissed without explicit acknowledgment. The user must check a box confirming they:
+On first launch, TuneSoar presents a **mandatory safety dialog** that cannot be dismissed without explicit acknowledgment. The user must check a box confirming they:
 
 - Understand the risks and safety guidelines
 - Do not have a history of seizures
-- Agree to use Attunely responsibly
+- Agree to use TuneSoar responsibly
 
 This acknowledgment is stored persistently and the dialog will not reappear unless preferences are reset.
 
 ### 7. Sleep Mode (10 PM – 6 AM)
 
-During late-night hours (22:00–06:00 local time), Attunely defaults to **Delta wave profiles (1–4 Hz, deep sleep)** with low beat frequencies (~2 Hz). This prevents accidental exposure to high-frequency Beta/Gamma beats during hours when the user is likely preparing for or entering sleep.
+During late-night hours (22:00–06:00 local time), TuneSoar defaults to **Delta wave profiles (1–4 Hz, deep sleep)** with low beat frequencies (~2 Hz). This prevents accidental exposure to high-frequency Beta/Gamma beats during hours when the user is likely preparing for or entering sleep.
 
 ---
 
@@ -172,7 +172,7 @@ During late-night hours (22:00–06:00 local time), Attunely defaults to **Delta
 | Canada (Health Canada) | Not licensed. Not a medical device under Food and Drugs Act. |
 | Australia (TGA) | Not included in ARTG. Not a therapeutic good. |
 
-**Attunely is a general wellness application**, not a therapeutic or diagnostic tool. It falls under the category of "general wellness products" as defined by FDA guidance, which are low-risk products intended to promote general well-being without making medical claims.
+**TuneSoar is a general wellness application**, not a therapeutic or diagnostic tool. It falls under the category of "general wellness products" as defined by FDA guidance, which are low-risk products intended to promote general well-being without making medical claims.
 
 ---
 
@@ -207,4 +207,4 @@ If you have safety concerns or experience adverse effects, please contact us:
 ---
 
 *Last updated: May 2026*
-*This document may be updated without notice. The latest version is always available within the Attunely application and at our documentation repository.*
+*This document may be updated without notice. The latest version is always available within the TuneSoar application and at our documentation repository.*

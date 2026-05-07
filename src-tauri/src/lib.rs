@@ -163,7 +163,7 @@ pub fn run() {
                 }
             });
 
-            log::info!("Attunely v{} started successfully", APP_VERSION);
+            log::info!("TuneSoar v{} started successfully", APP_VERSION);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

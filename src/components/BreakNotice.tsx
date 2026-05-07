@@ -34,7 +34,7 @@ export function BreakNotice({ onDismiss }: Props) {
         </div>
         <h2 className="text-lg font-semibold text-text-primary mb-2">Time for a Break</h2>
         <p className="text-sm text-text-secondary mb-2">
-          You've been using Attunely for 90 minutes. Taking breaks is important for your auditory health.
+          You've been using TuneSoar for 90 minutes. Taking breaks is important for your auditory health.
         </p>
         <p className="text-2xl font-mono font-bold text-trance-400 mb-4">
           {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}

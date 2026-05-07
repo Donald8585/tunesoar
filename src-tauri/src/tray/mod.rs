@@ -10,7 +10,7 @@ use tauri::{
 /// Create and configure the system tray icon with full menu
 pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::error::Error>> {
     // Main items
-    let context_label = MenuItemBuilder::with_id("context_label", "Attunely — Waiting...").build(app)?;
+    let context_label = MenuItemBuilder::with_id("context_label", "TuneSoar — Waiting...").build(app)?;
     let separator1 = PredefinedMenuItem::separator(app)?;
 
     // Pause/Resume
@@ -41,7 +41,7 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::er
     let separator3 = PredefinedMenuItem::separator(app)?;
     let settings_item = MenuItemBuilder::with_id("settings", "⚙ Settings...").build(app)?;
     let separator4 = PredefinedMenuItem::separator(app)?;
-    let quit_item = MenuItemBuilder::with_id("quit", "Quit Attunely").build(app)?;
+    let quit_item = MenuItemBuilder::with_id("quit", "Quit TuneSoar").build(app)?;
 
     let menu = MenuBuilder::new(app)
         .item(&context_label)
@@ -59,7 +59,7 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::er
     let _tray = TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
-        .tooltip("Attunely — Context-Aware Binaural Beats")
+        .tooltip("TuneSoar — Context-Aware Binaural Beats")
         .on_menu_event(|app, event| {
             match event.id().as_ref() {
                 "toggle" => {

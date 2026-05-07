@@ -260,9 +260,9 @@ const REPO_NAME = "tunesoar";
 
 function assetPattern(platform: string, arch: string): RegExp {
   const patterns: Record<string, RegExp> = {
-    "windows-x64":   /Attunely_.*_x64-setup\.exe$/,
-    "macos-x64":     /Attunely_.*_x64\.dmg$/,
-    "macos-arm64":   /Attunely_.*_aarch64\.dmg$/,
+    "windows-x64":   /TuneSoar_.*_x64-setup\.exe$/,
+    "macos-x64":     /TuneSoar_.*_x64\.dmg$/,
+    "macos-arm64":   /TuneSoar_.*_aarch64\.dmg$/,
     "linux-x64":     /[Aa]ttunely_.*_amd64\.AppImage$/,
     "linux-arm64":   /[Aa]ttunely_.*_arm64\.AppImage$/,
   };
@@ -276,7 +276,7 @@ app.get("/releases/latest/:platform/:arch", async (c) => {
 
   const resp = await fetch(
     `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`,
-    { headers: { Authorization: `Bearer ${c.env.GITHUB_TOKEN}`, "User-Agent": "attunely-worker", Accept: "application/vnd.github.v3+json" } },
+    { headers: { Authorization: `Bearer ${c.env.GITHUB_TOKEN}`, "User-Agent": "tunesoar-worker", Accept: "application/vnd.github.v3+json" } },
   );
   if (!resp.ok) return Response.json({ error: "Failed to fetch release" }, { status: 502 });
 
@@ -285,7 +285,7 @@ app.get("/releases/latest/:platform/:arch", async (c) => {
   if (!asset) return Response.json({ error: "No matching asset", platform, arch }, { status: 404 });
 
   const download = await fetch(asset.url, {
-    headers: { Authorization: `Bearer ${c.env.GITHUB_TOKEN}`, "User-Agent": "attunely-worker", Accept: "application/octet-stream" },
+    headers: { Authorization: `Bearer ${c.env.GITHUB_TOKEN}`, "User-Agent": "tunesoar-worker", Accept: "application/octet-stream" },
     redirect: "follow",
   });
   if (!download.ok) return Response.json({ error: "Download failed" }, { status: 502 });
@@ -309,7 +309,7 @@ app.get("/releases/updater/:target/:arch/:current_version", async (c) => {
 
   const resp = await fetch(
     `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`,
-    { headers: { Authorization: `Bearer ${c.env.GITHUB_TOKEN}`, "User-Agent": "attunely-updater", Accept: "application/vnd.github.v3+json" } },
+    { headers: { Authorization: `Bearer ${c.env.GITHUB_TOKEN}`, "User-Agent": "tunesoar-updater", Accept: "application/vnd.github.v3+json" } },
   );
   if (!resp.ok) return Response.json({ error: "Failed to fetch release" }, { status: 502 });
 
@@ -317,15 +317,15 @@ app.get("/releases/updater/:target/:arch/:current_version", async (c) => {
   const latestVersion = (release.tag_name ?? "v0.0.0").replace(/^v/, "");
   if (latestVersion === currentVersion.replace(/^v/, "")) return new Response(null, { status: 204 });
 
-  const sigPattern = new RegExp(`Attunely_.*_${arch}.*\\.(exe\\.zip\\.sig|app\\.tar\\.gz\\.sig|AppImage\\.tar\\.gz\\.sig)$`, "i");
+  const sigPattern = new RegExp(`TuneSoar_.*_${arch}.*\\.(exe\\.zip\\.sig|app\\.tar\\.gz\\.sig|AppImage\\.tar\\.gz\\.sig)$`, "i");
   const sigAsset = release.assets?.find((a: any) => sigPattern.test(a.name));
   if (!sigAsset) return new Response(null, { status: 204 });
 
   const sigResp = await fetch(sigAsset.url, {
-    headers: { Authorization: `Bearer ${c.env.GITHUB_TOKEN}`, "User-Agent": "attunely-updater", Accept: "application/octet-stream" },
+    headers: { Authorization: `Bearer ${c.env.GITHUB_TOKEN}`, "User-Agent": "tunesoar-updater", Accept: "application/octet-stream" },
   });
   const signature = await sigResp.text();
-  const workerHost = c.req.header("host") ?? "attunely-api.workers.dev";
+  const workerHost = c.req.header("host") ?? "tunesoar-api.workers.dev";
   const downloadUrl = `https://${workerHost}/releases/latest/${target === "darwin" ? "macos" : target}/${arch}`;
 
   return Response.json({
@@ -365,60 +365,60 @@ esac
 DOWNLOAD_URL="https://api.tunesoar.com/releases/latest/\${PLATFORM}/\${ARCH_NORM}"
 
 log "Detected: \$PLATFORM / \$ARCH_NORM"
-log "Downloading Attunely..."
+log "Downloading TuneSoar..."
 
 TMPDIR=\$(mktemp -d)
 trap 'rm -rf "\$TMPDIR"' EXIT
 cd "\$TMPDIR"
 
 if [ "\$PLATFORM" = "macos" ]; then
-  curl -fsSL --progress-bar -o Attunely.dmg "\$DOWNLOAD_URL" || die "Download failed"
+  curl -fsSL --progress-bar -o TuneSoar.dmg "\$DOWNLOAD_URL" || die "Download failed"
   log "Mounting DMG..."
-  hdiutil attach Attunely.dmg -nobrowse -quiet
-  if [ -d "/Volumes/Attunely" ]; then
-    cp -R "/Volumes/Attunely/Attunely.app" /Applications/
-    hdiutil detach "/Volumes/Attunely" -quiet
-    log "Done! Launch from /Applications/Attunely.app"
+  hdiutil attach TuneSoar.dmg -nobrowse -quiet
+  if [ -d "/Volumes/TuneSoar" ]; then
+    cp -R "/Volumes/TuneSoar/TuneSoar.app" /Applications/
+    hdiutil detach "/Volumes/TuneSoar" -quiet
+    log "Done! Launch from /Applications/TuneSoar.app"
   else
     die "Could not mount DMG"
   fi
 else
-  curl -fsSL --progress-bar -o attunely "\$DOWNLOAD_URL" || die "Download failed"
-  chmod +x attunely
+  curl -fsSL --progress-bar -o tunesoar "\$DOWNLOAD_URL" || die "Download failed"
+  chmod +x tunesoar
   mkdir -p "\$HOME/.local/bin"
-  mv attunely "\$HOME/.local/bin/attunely"
+  mv tunesoar "\$HOME/.local/bin/tunesoar"
   mkdir -p "\$HOME/.local/share/applications"
-  cat > "\$HOME/.local/share/applications/attunely.desktop" << 'DESKTOP'
+  cat > "\$HOME/.local/share/applications/tunesoar.desktop" << 'DESKTOP'
 [Desktop Entry]
-Name=Attunely
+Name=TuneSoar
 Comment=Context-Aware Binaural Beats
-Exec=\$HOME/.local/bin/attunely
-Icon=attunely
+Exec=\$HOME/.local/bin/tunesoar
+Icon=tunesoar
 Terminal=false
 Type=Application
 Categories=Audio;Utility;
 DESKTOP
-  log "Done! Run: attunely"
+  log "Done! Run: tunesoar"
 fi
 
 echo ""
-echo -e "  \${GREEN}✓ Attunely installed!\${NC}"
+echo -e "  \${GREEN}✓ TuneSoar installed!\${NC}"
 echo ""
 `;
 
-const INSTALL_PS1 = `# Attunely — Windows one-liner installer
+const INSTALL_PS1 = `# TuneSoar — Windows one-liner installer
 param(\$Version = "latest")
 \$ErrorActionPreference = "Stop"
 
-Write-Host "==> Attunely Installer (Windows)" -ForegroundColor Green
+Write-Host "==> TuneSoar Installer (Windows)" -ForegroundColor Green
 if (-not [Environment]::Is64BitOperatingSystem) { Write-Error "64-bit Windows required"; exit 1 }
 \$Arch = "x64"
 Write-Host "Detected: Windows / \$Arch"
 
 \$DownloadUrl = "https://api.tunesoar.com/releases/latest/windows/\$Arch"
-\$TempDir = Join-Path \$env:TEMP "attunely-installer"
+\$TempDir = Join-Path \$env:TEMP "tunesoar-installer"
 New-Item -ItemType Directory -Force -Path \$TempDir | Out-Null
-\$InstallerPath = Join-Path \$TempDir "Attunely-Setup.exe"
+\$InstallerPath = Join-Path \$TempDir "TuneSoar-Setup.exe"
 
 Write-Host "Downloading..."
 Invoke-WebRequest -Uri \$DownloadUrl -OutFile \$InstallerPath
@@ -427,7 +427,7 @@ Write-Host "Installing..."
 Start-Process -FilePath \$InstallerPath -ArgumentList "/S" -Wait
 
 Remove-Item -Recurse -Force \$TempDir -ErrorAction SilentlyContinue
-Write-Host "✓ Attunely installed!" -ForegroundColor Green
+Write-Host "✓ TuneSoar installed!" -ForegroundColor Green
 `;
 
 app.get("/install.sh", (c) => {

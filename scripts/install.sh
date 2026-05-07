@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────
-# Attunely — One-liner installer (macOS / Linux)
+# TuneSoar — One-liner installer (macOS / Linux)
 #
 # Usage:
 #   curl -fsSL https://api.tunesoar.com/install.sh | bash
@@ -26,42 +26,42 @@ esac
 DOWNLOAD_URL="https://api.tunesoar.com/releases/latest/${PLATFORM}/${ARCH_NORM}"
 
 log "Detected: $PLATFORM / $ARCH_NORM"
-log "Downloading Attunely..."
+log "Downloading TuneSoar..."
 
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 cd "$TMPDIR"
 
 if [ "$PLATFORM" = "macos" ]; then
-  curl -fsSL --progress-bar -o Attunely.dmg "$DOWNLOAD_URL" || die "Download failed"
+  curl -fsSL --progress-bar -o TuneSoar.dmg "$DOWNLOAD_URL" || die "Download failed"
   log "Mounting DMG..."
-  hdiutil attach Attunely.dmg -nobrowse -quiet
-  if [ -d "/Volumes/Attunely" ]; then
-    cp -R "/Volumes/Attunely/Attunely.app" /Applications/
-    hdiutil detach "/Volumes/Attunely" -quiet
-    log "Done! Launch from /Applications/Attunely.app"
+  hdiutil attach TuneSoar.dmg -nobrowse -quiet
+  if [ -d "/Volumes/TuneSoar" ]; then
+    cp -R "/Volumes/TuneSoar/TuneSoar.app" /Applications/
+    hdiutil detach "/Volumes/TuneSoar" -quiet
+    log "Done! Launch from /Applications/TuneSoar.app"
   else
     die "Could not mount DMG"
   fi
 else
-  curl -fsSL --progress-bar -o attunely "$DOWNLOAD_URL" || die "Download failed"
-  chmod +x attunely
+  curl -fsSL --progress-bar -o tunesoar "$DOWNLOAD_URL" || die "Download failed"
+  chmod +x tunesoar
   mkdir -p "$HOME/.local/bin"
-  mv attunely "$HOME/.local/bin/attunely"
+  mv tunesoar "$HOME/.local/bin/tunesoar"
   mkdir -p "$HOME/.local/share/applications"
-  cat > "$HOME/.local/share/applications/attunely.desktop" << 'DESKTOP'
+  cat > "$HOME/.local/share/applications/tunesoar.desktop" << 'DESKTOP'
 [Desktop Entry]
-Name=Attunely
+Name=TuneSoar
 Comment=Context-Aware Binaural Beats
-Exec=$HOME/.local/bin/attunely
-Icon=attunely
+Exec=$HOME/.local/bin/tunesoar
+Icon=tunesoar
 Terminal=false
 Type=Application
 Categories=Audio;Utility;
 DESKTOP
-  log "Done! Run: attunely"
+  log "Done! Run: tunesoar"
 fi
 
 echo ""
-echo -e "  ${GREEN}✓ Attunely installed!${NC}"
+echo -e "  ${GREEN}✓ TuneSoar installed!${NC}"
 echo ""

@@ -1,4 +1,4 @@
-// Attunely Bridge — Popup UI logic
+// TuneSoar Bridge — Popup UI logic
 
 const statusDiv = document.getElementById("status");
 const dotDiv = document.getElementById("dot");
@@ -12,11 +12,11 @@ function updateStatus(connected) {
   if (connected) {
     statusDiv.className = "status connected";
     dotDiv.className = "dot connected";
-    statusText.textContent = "Connected to Attunely desktop";
+    statusText.textContent = "Connected to TuneSoar desktop";
   } else {
     statusDiv.className = "status disconnected";
     dotDiv.className = "dot disconnected";
-    statusText.textContent = "Not connected — is Attunely running?";
+    statusText.textContent = "Not connected — is TuneSoar running?";
   }
 }
 

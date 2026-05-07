@@ -11,7 +11,7 @@ const slides = [
     icon: Brain,
     title: "Your Brain, Your Context",
     description:
-      "Attunely detects what you're doing and plays the right brainwave — quietly, automatically. Coding? Beta waves for focus. Writing? Alpha state for flow. No manual switching.",
+      "TuneSoar detects what you're doing and plays the right brainwave — quietly, automatically. Coding? Beta waves for focus. Writing? Alpha state for flow. No manual switching.",
     emoji: "🧠",
   },
   {

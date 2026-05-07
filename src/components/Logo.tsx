@@ -7,7 +7,7 @@ export function Logo({ size = 32 }: { size?: number }) {
       height={(size * 46) / 48}
       fill="none"
       viewBox="0 0 48 46"
-      aria-label="Attunely"
+      aria-label="TuneSoar"
     >
       <path
         fill="#863bff"

@@ -3,9 +3,9 @@
 **Effective Date: May 2026**
 **Last Updated: May 6, 2026**
 
-This Privacy Policy describes how **TranceLab** ("we," "our," or "us") collects, uses, stores, and protects your information when you use **Attunely** (the "Application"). By using Attunely, you agree to the practices described in this policy.
+This Privacy Policy describes how **TranceLab** ("we," "our," or "us") collects, uses, stores, and protects your information when you use **TuneSoar** (the "Application"). By using TuneSoar, you agree to the practices described in this policy.
 
-If you do not agree with this policy, do not use Attunely. You can also [disable all telemetry](#how-to-disable-all-telemetry) at any time.
+If you do not agree with this policy, do not use TuneSoar. You can also [disable all telemetry](#how-to-disable-all-telemetry) at any time.
 
 ---
 
@@ -26,7 +26,7 @@ If you do not agree with this policy, do not use Attunely. You can also [disable
 
 ### 1.1 Free Tier (No Account)
 
-The free tier of Attunely **requires no account** and **collects no personal information**. The application runs entirely on your local machine. The following data is stored **only on your device** and is **never transmitted** to us or any third party:
+The free tier of TuneSoar **requires no account** and **collects no personal information**. The application runs entirely on your local machine. The following data is stored **only on your device** and is **never transmitted** to us or any third party:
 
 | Data | Purpose | Location |
 |---|---|---|
@@ -36,9 +36,9 @@ The free tier of Attunely **requires no account** and **collects no personal inf
 
 **We never see this data.** It lives in a SQLite database file at your operating system's app data directory:
 
-- **Windows:** `%APPDATA%/com.trance-lab.attunely/`
-- **macOS:** `~/Library/Application Support/com.trance-lab.attunely/`
-- **Linux:** `~/.local/share/com.trance-lab.attunely/` or `$XDG_DATA_HOME/com.trance-lab.attunely/`
+- **Windows:** `%APPDATA%/com.trance-lab.tunesoar/`
+- **macOS:** `~/Library/Application Support/com.trance-lab.tunesoar/`
+- **Linux:** `~/.local/share/com.trance-lab.tunesoar/` or `$XDG_DATA_HOME/com.trance-lab.tunesoar/`
 
 ### 1.2 Pro Tier
 
@@ -56,7 +56,7 @@ We do **not** use your email for marketing unless you explicitly opt in to a sep
 
 ### 1.3 Telemetry (Opt-In Only)
 
-Attunely includes an **opt-in** usage telemetry system. By default, telemetry is **disabled**. You must explicitly enable it from **Settings → Privacy → Usage Telemetry**.
+TuneSoar includes an **opt-in** usage telemetry system. By default, telemetry is **disabled**. You must explicitly enable it from **Settings → Privacy → Usage Telemetry**.
 
 When enabled, the following **aggregate, anonymized** data may be transmitted:
 
@@ -133,7 +133,7 @@ The extension does **not** request the `history`, `cookies`, `bookmarks`, `downl
 - **Stability monitoring:** Crash reports help us fix bugs
 - **Feature development:** Usage patterns inform which contexts and integrations to build next
 
-We do **not** use telemetry data for advertising, profiling, or any purpose other than improving Attunely.
+We do **not** use telemetry data for advertising, profiling, or any purpose other than improving TuneSoar.
 
 ---
 
@@ -143,9 +143,9 @@ We do **not** use telemetry data for advertising, profiling, or any purpose othe
 
 All local data (preferences, mappings, usage logs) is stored in the app data directory. You can delete it at any time:
 
-1. Close Attunely completely
+1. Close TuneSoar completely
 2. Delete the app data directory (see paths in Section 1.1)
-3. Restart Attunely — it will create a fresh database with defaults
+3. Restart TuneSoar — it will create a fresh database with defaults
 
 Alternatively, from within the app, you can reset preferences to defaults from the Settings page (future feature).
 
@@ -212,7 +212,7 @@ If you are located in the European Economic Area, you have the following rights 
 - **Right to object:** Object to processing based on legitimate interests
 - **Right to withdraw consent:** Withdraw consent at any time (disabling telemetry)
 
-Since Attunely stores virtually all data locally, exercising these rights is typically as simple as disabling telemetry or deleting your local database. For Pro license data, contact us at the email below.
+Since TuneSoar stores virtually all data locally, exercising these rights is typically as simple as disabling telemetry or deleting your local database. For Pro license data, contact us at the email below.
 
 **Legal basis for processing:** We process personal data under the following legal bases:
 - **Consent:** Telemetry collection (opt-in) and browser extension data
@@ -229,7 +229,7 @@ If you are located in the People's Republic of China, you have rights under the 
 - Right to data portability
 - Right to withdraw consent
 
-Attunely's local-first architecture is designed to respect these rights. Almost all data processing occurs on your device, not on our servers.
+TuneSoar's local-first architecture is designed to respect these rights. Almost all data processing occurs on your device, not on our servers.
 
 ### Under PDPO (Hong Kong Users)
 
@@ -237,7 +237,7 @@ If you are located in Hong Kong, you have rights under the Personal Data (Privac
 
 ### California Residents (CCPA/CPRA)
 
-Attunely does not "sell" or "share" personal information as defined under the California Consumer Privacy Act. Since the free tier collects no personal information and Pro collects only the minimum necessary for license validation, CCPA does not apply to the free tier and applies minimally to Pro.
+TuneSoar does not "sell" or "share" personal information as defined under the California Consumer Privacy Act. Since the free tier collects no personal information and Pro collects only the minimum necessary for license validation, CCPA does not apply to the free tier and applies minimally to Pro.
 
 ---
 
@@ -245,7 +245,7 @@ Attunely does not "sell" or "share" personal information as defined under the Ca
 
 ### From the App
 
-1. Open Attunely → **Settings** (gear icon in tray menu)
+1. Open TuneSoar → **Settings** (gear icon in tray menu)
 2. Scroll to **Privacy** section
 3. Toggle **"Usage Telemetry"** to **OFF**
 4. The change takes effect immediately — no data will be sent from that point forward
@@ -263,14 +263,14 @@ SELECT value FROM user_prefs WHERE key = 'telemetry_opt_in';
 
 - **Do not install the browser extension** — URL detection via extension is optional; app-based detection works without it
 - **Do not sign up for Pro** — the free tier requires zero personal information
-- **Block outbound connections** — you can use a firewall to block Attunely from all outbound network access; the app functions fully offline
+- **Block outbound connections** — you can use a firewall to block TuneSoar from all outbound network access; the app functions fully offline
 - **Periodic data cleanup** — delete the local SQLite database to wipe all usage history
 
 ---
 
 ## 8. Children's Privacy
 
-Attunely is **not intended for use by anyone under the age of 18**. We do not knowingly collect personal information from children. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately.
+TuneSoar is **not intended for use by anyone under the age of 18**. We do not knowingly collect personal information from children. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately.
 
 See [SAFETY.md](./SAFETY.md) for additional age-related safety warnings.
 
@@ -281,10 +281,10 @@ See [SAFETY.md](./SAFETY.md) for additional age-related safety warnings.
 We may update this Privacy Policy from time to time. When we do, we will:
 
 1. Update the "Last Updated" date at the top of this document
-2. For material changes, display a notice in the Attunely application on next launch
+2. For material changes, display a notice in the TuneSoar application on next launch
 3. For Pro users, send an email notification to the address on file
 
-Your continued use of Attunely after changes constitutes acceptance of the updated policy.
+Your continued use of TuneSoar after changes constitutes acceptance of the updated policy.
 
 ---
 

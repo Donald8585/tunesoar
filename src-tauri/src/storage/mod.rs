@@ -10,7 +10,7 @@ pub struct StorageState {
 
 impl StorageState {
     pub fn new(app_data_dir: &std::path::Path) -> Result<Self, String> {
-        let db_path = app_data_dir.join("attunely.db");
+        let db_path = app_data_dir.join("tunesoar.db");
         let db = Database::open(&db_path)?;
         Ok(Self {
             db: Mutex::new(db),

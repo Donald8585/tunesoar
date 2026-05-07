@@ -1,11 +1,11 @@
-# 🎵 Attunely — Context-Aware Binaural Beats
+# 🎵 TuneSoar — Context-Aware Binaural Beats
 
 Auto-deploys binaural beats based on what you're doing. Coding? Beta waves. Writing? Alpha state. Gaming? Tuned focus. Zero manual switching.
 
 ## Architecture
 
 ```
-attunely/
+tunesoar/
 ├── src-tauri/          # Rust backend (Tauri v2)
 │   ├── src/
 │   │   ├── audio/      # Binaural beat DSP engine (cpal)
@@ -104,7 +104,7 @@ Outputs:
 1. Open `chrome://extensions` or `about:debugging#/runtime/this-firefox`
 2. Enable "Developer mode"
 3. Load unpacked: select `browser-extension/` folder
-4. Paste auth token from Attunely Settings → Browser Extension
+4. Paste auth token from TuneSoar Settings → Browser Extension
 
 ## Safety
 

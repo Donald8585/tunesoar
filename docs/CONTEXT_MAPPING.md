@@ -1,6 +1,6 @@
 # 🗺️ Context Mapping Reference
 
-This document describes how Attunely detects what you're doing (context) and maps it to a binaural beat profile. It covers default mappings, custom mapping rules, URL pattern matching, context detection priorities, idle detection logic, and auto-pause conditions.
+This document describes how TuneSoar detects what you're doing (context) and maps it to a binaural beat profile. It covers default mappings, custom mapping rules, URL pattern matching, context detection priorities, idle detection logic, and auto-pause conditions.
 
 ---
 
@@ -23,7 +23,7 @@ This document describes how Attunely detects what you're doing (context) and map
 
 ## Beat Profiles
 
-Attunely supports five brainwave frequency bands:
+TuneSoar supports five brainwave frequency bands:
 
 | Band | Frequency Range | Default Hz | Effect | Risk Level |
 |---|---|---|---|---|
@@ -234,7 +234,7 @@ The complete default context → beat mapping used when no custom mapping overri
 
 ## Context Detection Priority
 
-When Attunely detects a new context, it evaluates signals in this order:
+When TuneSoar detects a new context, it evaluates signals in this order:
 
 ```
 1. URL (browser extension)
@@ -402,7 +402,7 @@ fn match_url(url: &str) -> Option<ContextType> {
 
 ## Fuzzy App Matching
 
-When no exact app name match is found, Attunely performs a **case-insensitive contains** search:
+When no exact app name match is found, TuneSoar performs a **case-insensitive contains** search:
 
 1. Convert the detected `app_name` to lowercase
 2. Convert the `window_title` to lowercase
@@ -419,7 +419,7 @@ This means:
 
 ## Idle Detection Logic
 
-Attunely tracks user activity via the **last active timestamp**, updated on every context detection cycle.
+TuneSoar tracks user activity via the **last active timestamp**, updated on every context detection cycle.
 
 ### Idle Detection Parameters
 
@@ -458,7 +458,7 @@ The idle detection does **not** use mouse movement, keyboard input, or system id
 
 ## Auto-Pause Conditions
 
-Attunely automatically pauses binaural beats (sets frequency to 0 Hz) under these conditions:
+TuneSoar automatically pauses binaural beats (sets frequency to 0 Hz) under these conditions:
 
 ### 1. Meeting Detection
 
@@ -518,7 +518,7 @@ Attunely automatically pauses binaural beats (sets frequency to 0 Hz) under thes
 
 ## Time-Based Fallback (Sleep Mode)
 
-When no app or URL match is found, Attunely checks the local system time:
+When no app or URL match is found, TuneSoar checks the local system time:
 
 | Time Range | Behavior |
 |---|---|

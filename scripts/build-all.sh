@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────
-# Attunely — Local build script (Linux)
+# TuneSoar — Local build script (Linux)
 #
 # Builds Linux packages (deb + AppImage) from current source.
 # For macOS/Windows, use the GitHub Actions release workflow.
