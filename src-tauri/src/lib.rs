@@ -144,7 +144,7 @@ pub fn run() {
             commands::get_mappings,
             commands::save_mapping,
             commands::delete_mapping,
-            commands::get_usage_stats,
+                                    commands::get_usage_stats,
             commands::log_usage,
             commands::accept_safety_warning,
             commands::is_safety_accepted,

@@ -16,13 +16,14 @@ pub struct CurrentStatus {
     pub context_type: String,
     pub app_name: String,
     pub window_title: String,
-    pub auto_detect_enabled: bool,
-    pub manual_override: Option<String>,
+    pub url: Option<String>,
     pub beat_type: String,
     pub beat_frequency: f32,
     pub volume: f32,
     pub is_playing: bool,
     pub is_paused: bool,
+    pub auto_detect_enabled: bool,
+    pub manual_override: Option<String>,
 }
 
 /// Get current playback status and detected context
@@ -31,10 +32,11 @@ pub fn get_status(
     audio: State<AudioState>,
     context: State<ContextState>,
 ) -> Result<CurrentStatus, String> {
-    let detector = context.detector.lock().unwrap();
-    let current_ctx = detector.current_context.lock().unwrap().clone();
-    let auto_enabled = *detector.auto_detect_enabled.lock().unwrap();
-    let manual_ov = *detector.manual_override.lock().unwrap();
+    let current_ctx = context.detector.lock().unwrap()
+        .current_context.lock().unwrap().clone();
+    let auto_enabled = *context.detector.lock().unwrap().auto_detect_enabled.lock().unwrap();
+    let manual_ov = *context.detector.lock().unwrap().manual_override.lock().unwrap();
+        .current_context.lock().unwrap().clone();
 
     let profile = audio.current_profile.lock().unwrap();
     let volume = *audio.volume.lock().unwrap();
@@ -105,6 +107,7 @@ pub fn detect_context(
     context: State<ContextState>,
 ) -> Result<DetectedContext, String> {
     let detector = context.detector.lock().unwrap();
+    let browser_url = context.browser_url.lock().unwrap().clone();
 
     // Get active window
     let (window_title, app_name) = match crate::context::platform::get_active_window() {
@@ -115,7 +118,7 @@ pub fn detect_context(
         }
     };
 
-    let detected = detector.detect(&window_title, &app_name, None);
+    let detected = detector.detect(&window_title, &app_name, browser_url.as_deref());
 
     // Check idle
     if detector.is_idle() {
@@ -152,7 +155,7 @@ pub fn set_manual_override(context_type: String, context: State<ContextState>) -
         "relaxation" | "relax" | "meditation" => ContextType::Relaxation, "gaming" | "game" => ContextType::Gaming,
         "sleep" | "sleepprep" => ContextType::SleepPrep, "music" => ContextType::Music,
         "ambient" | "default" => ContextType::Ambient,
-        _ => return Err(format!("Unknown context: {}", context_type)),
+        _ => return Err(format!("Unknown: {}", context_type)),
     };
     detector.set_manual_override(Some(ct));
     Ok(format!("{:?}", ct))
@@ -199,6 +202,11 @@ pub fn delete_mapping(id: i64, storage: State<StorageState>) -> Result<(), Strin
 
 /// Set browser URL manually (when WebSocket is not available)
 #[tauri::command]
+auto_detect_enabled: auto_enabled,
+manual_override: manual_ov.map(|c| format!("{:?}", c)),
+    *context.browser_url.lock().unwrap() = Some(url);
+    Ok(())
+}
 
 /// Get usage statistics
 #[tauri::command]

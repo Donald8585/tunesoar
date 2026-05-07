@@ -10,6 +10,7 @@ pub struct ContextDetector {
     /// App name patterns → ContextType
     pub app_mappings: Mutex<HashMap<String, ContextType>>,
     /// URL patterns → ContextType (from browser extension)
+    pub url_mappings: Mutex<HashMap<String, ContextType>>,
     /// Current detected context
     pub current_context: Mutex<Option<DetectedContext>>,
     /// Last active timestamp (for idle detection)
@@ -111,20 +112,101 @@ impl ContextDetector {
             app_mappings.insert(app.to_string(), ContextType::Music);
         }
 
+        let mut url_mappings = HashMap::new();
+
+        // URL patterns → context
+        // YouTube / video sites → passive_watch
+        url_mappings.insert("youtube.com".to_string(), ContextType::PassiveWatch);
+        url_mappings.insert("twitch.tv".to_string(), ContextType::PassiveWatch);
+        url_mappings.insert("netflix.com".to_string(), ContextType::PassiveWatch);
+        url_mappings.insert("disneyplus.com".to_string(), ContextType::PassiveWatch);
+        url_mappings.insert("hulu.com".to_string(), ContextType::PassiveWatch);
+        url_mappings.insert("hbomax.com".to_string(), ContextType::PassiveWatch);
+        url_mappings.insert("vimeo.com".to_string(), ContextType::PassiveWatch);
+
+        // Auto-pause for music/ASMR content on YouTube
+        url_mappings.insert("music.youtube.com".to_string(), ContextType::Music);
+        // Detected via URL path matching in detector logic
+
+        // Communication web apps
+        url_mappings.insert("gmail.com".to_string(), ContextType::Communication);
+        url_mappings.insert("outlook.live.com".to_string(), ContextType::Communication);
+        url_mappings.insert("outlook.office.com".to_string(), ContextType::Communication);
+        url_mappings.insert("slack.com".to_string(), ContextType::Communication);
+        url_mappings.insert("teams.microsoft.com".to_string(), ContextType::Communication);
+        url_mappings.insert("discord.com".to_string(), ContextType::Communication);
+        url_mappings.insert("web.whatsapp.com".to_string(), ContextType::Communication);
+        url_mappings.insert("telegram.org".to_string(), ContextType::Communication);
+
+        // Writing web apps
+        url_mappings.insert("docs.google.com".to_string(), ContextType::Writing);
+        url_mappings.insert("notion.so".to_string(), ContextType::Writing);
+        url_mappings.insert("office.com".to_string(), ContextType::Writing);
+        url_mappings.insert("wordpress.com".to_string(), ContextType::Writing);
+        url_mappings.insert("medium.com".to_string(), ContextType::Writing);
+        url_mappings.insert("substack.com".to_string(), ContextType::Writing);
+
+        // Design web apps
+        url_mappings.insert("figma.com".to_string(), ContextType::Creative);
+        url_mappings.insert("canva.com".to_string(), ContextType::Creative);
+        url_mappings.insert("photopea.com".to_string(), ContextType::Creative);
+
+        // Coding web apps
+        url_mappings.insert("github.com".to_string(), ContextType::Coding);
+        url_mappings.insert("gitlab.com".to_string(), ContextType::Coding);
+        url_mappings.insert("stackoverflow.com".to_string(), ContextType::Coding);
+        url_mappings.insert("codesandbox.io".to_string(), ContextType::Coding);
+        url_mappings.insert("replit.com".to_string(), ContextType::Coding);
+        url_mappings.insert("codepen.io".to_string(), ContextType::Coding);
+
         Self {
             app_mappings: Mutex::new(app_mappings),
+            url_mappings: Mutex::new(url_mappings),
             current_context: Mutex::new(None),
             last_active: Mutex::new(chrono::Utc::now().timestamp_millis()),
-            other_audio_active: Mutex::new(false),
             manual_override: Mutex::new(None),
             auto_detect_enabled: Mutex::new(true),
+            other_audio_active: Mutex::new(false),
         }
     }
 
     /// Detect context from active window title and optional URL
-    pub fn detect(&self, window_title: &str, app_name: &str) -> DetectedContext {
+    pub fn detect(&self, window_title: &str, app_name: &str, url: Option<&str>) -> DetectedContext {
         let now = chrono::Utc::now().timestamp_millis();
 
+        // Check URL first (most specific signal from browser extension)
+        let url_context = url.and_then(|u| self.match_url(u));
+
+        let context_type = if let Some(ctx) = url_context {
+            ctx
+        } else {
+            // Match by app name
+            self.match_app(app_name)
+                .or_else(|| self.match_app_fuzzy(app_name, window_title))
+                .unwrap_or_else(|| {
+                    // Check time-based context (sleep prep: 10pm-6am)
+                    let hour = Local::now().hour();
+                    if hour >= 22 || hour < 6 {
+                        // During sleep hours, check for reading/research apps
+                        let lower_title = window_title.to_lowercase();
+                        if lower_title.contains("kindle") || lower_title.contains("reader")
+                            || lower_title.contains("books") || lower_title.contains("pocket")
+                            || lower_title.contains("instapaper")
+                        {
+                            return ContextType::SleepPrep;
+                        }
+                    }
+                    ContextType::Ambient
+                })
+        };
+
+        DetectedContext {
+            context_type,
+            app_name: app_name.to_string(),
+            window_title: window_title.to_string(),
+            url: url.map(|u| u.to_string()),
+            detected_at: now,
+        }
     }
 
     /// Exact match app name
@@ -149,6 +231,28 @@ impl ContextDetector {
     }
 
     /// Match URL against known patterns
+    fn match_url(&self, url: &str) -> Option<ContextType> {
+        let mappings = self.url_mappings.lock().unwrap();
+        let url_lower = url.to_lowercase();
+
+        // Check for music/ASMR specific patterns on YouTube
+        if url_lower.contains("youtube.com") {
+            if url_lower.contains("music") || url_lower.contains("playlist")
+                || url_lower.contains("asmr") || url_lower.contains("meditation")
+                || url_lower.contains("relaxing") || url_lower.contains("sleep")
+                || url_lower.contains("lofi") || url_lower.contains("ambient")
+            {
+                return Some(ContextType::Music);
+            }
+        }
+
+        for (pattern, ctx) in mappings.iter() {
+            if url_lower.contains(pattern) {
+                return Some(*ctx);
+            }
+        }
+        None
+    }
 
     /// Check if user is idle (no activity for >5 minutes)
     pub fn is_idle(&self) -> bool {
@@ -163,9 +267,9 @@ impl ContextDetector {
     }
 }
 impl ContextDetector {
-    pub fn set_manual_override(&self, c: Option<ContextType>) {
-        *self.manual_override.lock().unwrap() = c;
-        *self.auto_detect_enabled.lock().unwrap() = c.is_none();
+    pub fn set_manual_override(&self, ctx: Option<ContextType>) {
+        *self.manual_override.lock().unwrap() = ctx;
+        *self.auto_detect_enabled.lock().unwrap() = ctx.is_none();
     }
     pub fn enable_auto_detect(&self) {
         *self.manual_override.lock().unwrap() = None;
