@@ -77,7 +77,7 @@ function layout(title: string, body: string, currentPage = ""): string {
 
 // ────────────────────────────────────────────────────────────────────
 
-const HOME_PAGE = layout("Context-Aware Binaural Beats", `
+export const HOME_PAGE = layout("Context-Aware Binaural Beats", `
 <div style="text-align:center;padding:80px 0 40px">
   <svg style="width:80px;height:auto;margin-bottom:24px" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 48 46"><path fill="#863bff" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z"/></svg>
   <h1>TuneSoar</h1>
@@ -114,7 +114,7 @@ const HOME_PAGE = layout("Context-Aware Binaural Beats", `
 
 // ────────────────────────────────────────────────────────────────────
 
-const PRICING_PAGE = layout("Pricing", `
+export const PRICING_PAGE = layout("Pricing", `
 <div style="text-align:center;padding:60px 0 20px"><h1>Simple Pricing</h1><p>Start free. Upgrade when you're ready.</p></div>
 <div class="pricing-grid">
   <div class="card pricing-card">
@@ -166,7 +166,7 @@ const PRICING_PAGE = layout("Pricing", `
 
 // ────────────────────────────────────────────────────────────────────
 
-const ACCOUNT_PAGE = layout("Account", `
+export const ACCOUNT_PAGE = layout("Account", `
 <div style="text-align:center;padding:60px 0 20px"><h1>Account</h1></div>
 <div class="card" style="max-width:480px;margin:0 auto;text-align:center">
   <div id="clerk-signed-out" style="display:none">
@@ -199,7 +199,7 @@ document.getElementById("clerk-sign-out-btn")?.addEventListener("click",async()=
 
 // ────────────────────────────────────────────────────────────────────
 
-const PRIVACY_PAGE = layout("Privacy Policy", `
+export const PRIVACY_PAGE = layout("Privacy Policy", `
 <div style="padding:60px 0 20px"><h1>Privacy Policy</h1></div>
 <div class="card" style="max-width:720px;margin:0 auto">
   <p><strong>Last updated:</strong> May 2026</p>
@@ -222,7 +222,7 @@ const PRIVACY_PAGE = layout("Privacy Policy", `
 
 // ────────────────────────────────────────────────────────────────────
 
-const TERMS_PAGE = layout("Terms of Service", `
+export const TERMS_PAGE = layout("Terms of Service", `
 <div style="padding:60px 0 20px"><h1>Terms of Service</h1></div>
 <div class="card" style="max-width:720px;margin:0 auto">
   <p><strong>Last updated:</strong> May 2026</p>
@@ -245,7 +245,7 @@ const TERMS_PAGE = layout("Terms of Service", `
 
 // ────────────────────────────────────────────────────────────────────
 
-const SAFETY_PAGE = layout("⚠️ Safety Warning", `
+export const SAFETY_PAGE = layout("⚠️ Safety Warning", `
 <div style="padding:60px 0 20px"><h1>⚠️ Safety Warning</h1></div>
 <div class="card" style="max-width:720px;margin:0 auto;border-color:#ff6b47">
   <h3 style="color:#ff6b47">Binaural beats may trigger seizures in people with photosensitive epilepsy.</h3>
