@@ -195,7 +195,6 @@ unsafe fn macos_cf_release(cf: *mut std::ffi::c_void) {
 fn get_active_window_linux() -> Result<(String, String), String> {
     use x11rb::connection::Connection;
     use x11rb::protocol::xproto::ConnectionExt;
-    use x11rb::protocol::ewmh::ConnectionExt as EwmhExt;
     use x11rb::rust_connection::RustConnection;
     use x11rb::wrapper::ConnectionExt as WrapperExt;
     use x11rb::atom_manager;
@@ -206,6 +205,7 @@ fn get_active_window_linux() -> Result<(String, String), String> {
             _NET_WM_NAME,
             WM_NAME,
             _NET_WM_PID,
+            UTF8_STRING,
         }
     }
 
@@ -231,21 +231,24 @@ fn get_active_window_linux() -> Result<(String, String), String> {
         .reply()
         .map_err(|e| format!("Reply: {}", e))?;
 
-    let raw = match active.value32() {
-        Some(v) if v != 0 => v,
-        _ => return Ok(("Desktop".to_string(), "Unknown".to_string())),
+    // value32() returns an iterator in x11rb 0.13
+    let raw: Vec<u32> = active.value32().collect();
+    let raw = if raw.len() >= 1 && raw[0] != 0 {
+        raw[0]
+    } else {
+        return Ok(("Desktop".to_string(), "Unknown".to_string()));
     };
 
     let window = x11rb::protocol::xproto::Window::from(raw);
 
     // Window title
     let title = conn
-        .get_property(false, window, atoms._NET_WM_NAME, x11rb::protocol::xproto::AtomEnum::UTF8_STRING, 0, 1024)
+        .get_property(false, window, atoms._NET_WM_NAME, atoms.UTF8_STRING, 0, 1024)
         .ok()
         .and_then(|r| r.reply().ok())
         .and_then(|r| String::from_utf8(r.value).ok())
         .or_else(|| {
-            conn.get_property(false, window, atoms.WM_NAME, x11rb::protocol::xproto::AtomEnum::UTF8_STRING, 0, 1024)
+            conn.get_property(false, window, atoms.WM_NAME, atoms.UTF8_STRING, 0, 1024)
                 .ok()
                 .and_then(|r| r.reply().ok())
                 .and_then(|r| String::from_utf8(r.value).ok())
@@ -257,7 +260,10 @@ fn get_active_window_linux() -> Result<(String, String), String> {
         .get_property(false, window, atoms._NET_WM_PID, x11rb::protocol::xproto::AtomEnum::CARDINAL, 0, 1)
         .ok()
         .and_then(|r| r.reply().ok())
-        .and_then(|r| r.value32().map(|pid| pid))
+        .and_then(|r| {
+            let vals: Vec<u32> = r.value32().collect();
+            if vals.is_empty() { None } else { Some(vals[0]) }
+        })
         .and_then(|pid| std::fs::read_to_string(format!("/proc/{}/comm", pid)).ok())
         .map(|s| s.trim().to_string())
         .unwrap_or_else(|| "Unknown".to_string());
