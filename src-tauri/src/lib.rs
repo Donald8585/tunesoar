@@ -9,13 +9,10 @@ mod tray;
 // Re-exports for testing
 pub use audio::{AudioState, BeatType, ContextType, BeatProfile, DetectedContext};
 
-use audio::AudioState;
 use context::ContextState;
 use license::LicenseState;
 use safety::SafetyState;
 use storage::StorageState;
-use std::sync::Arc;
-use std::time::Duration;
 use tauri::Manager;
 
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -49,85 +46,10 @@ pub fn run() {
             let handle = app.handle().clone();
             tray::create_tray(&handle).expect("Failed to create tray");
 
-
-            // Start periodic context detection (every 3 seconds)
-            let handle_clone = app.handle().clone();
-            std::thread::spawn(move || {
-                loop {
-                    std::thread::sleep(Duration::from_secs(3));
-
-                    let audio_state = handle_clone.state::<AudioState>();
-                    let context_state = handle_clone.state::<ContextState>();
-                    let safety_state = handle_clone.state::<SafetyState>();
-
-                    // Check discomfort cooldown
-                    if let Some(until) = *safety_state.discomfort_until.lock().unwrap() {
-                        let now = chrono::Utc::now().timestamp();
-                        if now < until {
-                            // Still in cooldown, don't play
-                            continue;
-                        }
-                    }
-
-                    // Check break cooldown
-                    if *safety_state.break_required.lock().unwrap() {
-                        if let Some(until) = *safety_state.break_cooldown_until.lock().unwrap() {
-                            let now = chrono::Utc::now().timestamp();
-                            if now < until {
-                                continue; // In break
-                            } else {
-                                *safety_state.break_required.lock().unwrap() = false;
-                                *safety_state.break_cooldown_until.lock().unwrap() = None;
-                                *safety_state.continuous_play_seconds.lock().unwrap() = 0;
-                            }
-                        }
-                    }
-
-                    // Track continuous play time
-                    let mut play_secs = safety_state.continuous_play_seconds.lock().unwrap();
-                    *play_secs += 3;
-
-                    // Check 90-minute limit
-                    if *play_secs >= safety::gate::MAX_CONTINUOUS_PLAY_SECONDS {
-                        *safety_state.break_required.lock().unwrap() = true;
-                        let now = chrono::Utc::now().timestamp();
-                        *safety_state.break_cooldown_until.lock().unwrap() =
-                            Some(now + safety::gate::BREAK_DURATION_SECONDS);
-
-                        // Emit break notification to frontend
-                        if let Some(window) = handle_clone.get_webview_window("main") {
-                            let _ = window.emit("break-required", ());
-                        }
-
-                        // Auto-pause audio
-                        if let Some(ref mut engine) = *audio_state.engine.lock().unwrap() {
-                            engine.fade_out();
-                        }
-                        continue;
-                    }
-
-                    let detector = context_state.detector.lock().unwrap();
-
-                    if let Ok((window_title, app_name)) = context::platform::get_active_window() {
-                        let detected = detector.detect(
-                            &window_title,
-                            &app_name,
-                        );
-
-                        if detector.is_idle() {
-                            let idle_ctx = audio::DetectedContext {
-                                context_type: audio::ContextType::Idle,
-                                ..detected
-                            };
-                            audio::update_beat_for_context(&audio_state, &idle_ctx);
-                        } else {
-                            detector.mark_active();
-                            audio::update_beat_for_context(&audio_state, &detected);
-                            *detector.current_context.lock().unwrap() = Some(detected);
-                        }
-                    }
-                }
-            });
+            // Context detection runs on-demand via frontend polling the
+            // `detect_context` Tauri command (every 3s from the React UI).
+            // This avoids thread-safety issues with platform-specific
+            // window detection code and Tauri v2's runtime types.
 
             log::info!("TuneSoar v{} started successfully", APP_VERSION);
             Ok(())
@@ -144,7 +66,7 @@ pub fn run() {
             commands::get_mappings,
             commands::save_mapping,
             commands::delete_mapping,
-                                    commands::get_usage_stats,
+            commands::get_usage_stats,
             commands::log_usage,
             commands::accept_safety_warning,
             commands::is_safety_accepted,

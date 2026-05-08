@@ -26,7 +26,12 @@ export function TrayWindow() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStatus();
-    const interval = setInterval(fetchStatus, 3000);
+    // Also trigger context detection in the backend
+    invoke("detect_context").catch(() => {});
+    const interval = setInterval(() => {
+      invoke("detect_context").catch(() => {});
+      fetchStatus();
+    }, 3000);
     return () => clearInterval(interval);
   }, [fetchStatus]);
 

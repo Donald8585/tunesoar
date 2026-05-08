@@ -36,7 +36,6 @@ pub fn get_status(
         .current_context.lock().unwrap().clone();
     let auto_enabled = *context.detector.lock().unwrap().auto_detect_enabled.lock().unwrap();
     let manual_ov = *context.detector.lock().unwrap().manual_override.lock().unwrap();
-        .current_context.lock().unwrap().clone();
 
     let profile = audio.current_profile.lock().unwrap();
     let volume = *audio.volume.lock().unwrap();
@@ -110,7 +109,7 @@ pub fn detect_context(
     let browser_url = context.browser_url.lock().unwrap().clone();
 
     // Get active window
-    let (window_title, app_name) = match crate::context::platform::get_active_window() {
+    let (window_title, app_name) = match crate::context::detector::platform::get_active_window() {
         Ok(result) => result,
         Err(e) => {
             log::warn!("Could not detect active window: {}", e);

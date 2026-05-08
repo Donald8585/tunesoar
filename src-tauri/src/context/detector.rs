@@ -17,6 +17,10 @@ pub struct ContextDetector {
     pub last_active: Mutex<i64>,
     /// Whether audio from other apps is detected
     pub other_audio_active: Mutex<bool>,
+    /// Manual context override (user selected)
+    pub manual_override: Mutex<Option<ContextType>>,
+    /// Whether automatic context detection is enabled
+    pub auto_detect_enabled: Mutex<bool>,
 }
 
 impl ContextDetector {
