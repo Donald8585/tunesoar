@@ -1,0 +1,31 @@
+=== Phase 1.1 — Tauri Config Audit ===
+Timestamp: 2026-05-08T04:33 UTC
+
+=== tauri.conf.json ===
+✅ productName: "TuneSoar" 
+✅ version: "0.1.0"
+✅ identifier: "com.trancelab.tunesoar" (valid reverse-domain with company name)
+✅ build.frontendDist: "../dist"
+✅ build.beforeBuildCommand: "pnpm build"
+✅ bundle.active: true
+✅ bundle.targets: "all"
+✅ bundle.createUpdaterArtifacts: true
+✅ bundle.publisher: "TranceLab"
+✅ bundle.windows.nsis: installMode "currentUser"
+✅ bundle.windows.wix: {} (present)
+✅ bundle.macOS.minimumSystemVersion: "11.0"
+✅ app.windows: configured (420x640, centered, resizable)
+✅ security.csp: set
+✅ plugins.updater: endpoints + pubkey configured
+
+=== DEVIATIONS FROM MISSION SPEC ===
+- Spec shows identifier "com.tunesoar.app" → actual is "com.trancelab.tunesoar" (OK, this is standard reverse-domain)
+- Spec shows category "Utility" → missing in actual config
+- Spec shows shortDescription/longDescription → missing in actual config
+- Spec shows macOS signingIdentity null → not present but handled via env vars in CI
+- Spec shows linux.deb.depends → missing in actual config
+
+=== ACTION ITEMS ===
+1. Add bundle.category: "Utility" 
+2. Add bundle.shortDescription + longDescription
+3. Add linux.deb.depends for proper .deb packaging

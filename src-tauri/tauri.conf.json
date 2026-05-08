@@ -42,14 +42,24 @@
     ],
     "createUpdaterArtifacts": true,
     "publisher": "TranceLab",
+    "category": "Utility",
+    "shortDescription": "Context-aware binaural beats desktop app",
+    "longDescription": "TuneSoar automatically switches binaural beat profiles based on what you're doing — coding, writing, gaming, reading, or relaxing. Features 12 context types, 5 brainwave bands, auto-pause, sleep mode, and custom mappings. Runs quietly in your system tray.",
     "windows": {
       "nsis": {
         "installMode": "currentUser"
       },
-      "wix": {}
+      "wix": {
+        "language": "en-US"
+      }
     },
     "macOS": {
       "minimumSystemVersion": "11.0"
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libssl3", "libgtk-3-0", "libasound2"]
+      }
     }
   },
   "plugins": {
