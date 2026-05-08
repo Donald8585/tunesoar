@@ -20,7 +20,7 @@ pub fn get_active_window() -> Result<(String, String), String> {
 #[cfg(target_os = "windows")]
 fn get_active_window_windows() -> Result<(String, String), String> {
     use windows::Win32::System::Threading::{
-        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT,
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
         PROCESS_QUERY_LIMITED_INFORMATION,
     };
     use windows::Win32::UI::WindowsAndMessaging::{
@@ -51,8 +51,8 @@ fn get_active_window_windows() -> Result<(String, String), String> {
             match OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) {
                 Ok(h) => {
                     let mut name_buf = vec![0u16; 260];
-                    let mut name_len: u32 = 260;
-                    let ok = QueryFullProcessImageNameW(h, PROCESS_NAME_FORMAT(0), &mut name_buf, &mut name_len);
+                    let mut name_len: u32 = name_buf.len() as u32;
+                    let ok = QueryFullProcessImageNameW(h, PROCESS_NAME_WIN32, &mut name_buf, &mut name_len);
                     let _ = windows::Win32::Foundation::CloseHandle(h);
                     if ok.is_ok() {
                         let path = String::from_utf16_lossy(&name_buf[..name_len as usize]);
