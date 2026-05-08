@@ -67,7 +67,7 @@
       "endpoints": [
         "https://api.tunesoar.com/releases/updater/{{target}}/{{arch}}/{{current_version}}"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEY5M0ExRDY1Qjc0MjFDNwpSV1RISVhSYjFxR1RENFA3UERGYnRCd0pDYVdOV0NPbFI2bjRMNHJSNzRmcklCN3pOR1lqTHB3Qwo="
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNCRDZEQkVCMkY5NDg2NzEKUldSeGhwUXY2OXZXT3pad0kzZ0dJTkNIK1NQWXZzbzZINEVWZ2VKN0RabHhyRVVvRzNqVlRjUzEK"
     }
   }
 }
