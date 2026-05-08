@@ -197,17 +197,6 @@ pub fn delete_mapping(id: i64, storage: State<StorageState>) -> Result<(), Strin
     storage.db.lock().unwrap().delete_mapping(id)
 }
 
-/// Get WebSocket auth token (for browser extension pairing)
-#[tauri::command]
-
-/// Set browser URL manually (when WebSocket is not available)
-#[tauri::command]
-auto_detect_enabled: auto_enabled,
-manual_override: manual_ov.map(|c| format!("{:?}", c)),
-    *context.browser_url.lock().unwrap() = Some(url);
-    Ok(())
-}
-
 /// Get usage statistics
 #[tauri::command]
 pub fn get_usage_stats(days: i64, storage: State<StorageState>) -> Result<Vec<(String, i64)>, String> {
