@@ -24,7 +24,7 @@ fn get_active_window_windows() -> Result<(String, String), String> {
     };
     use windows::Win32::System::Threading::{
         GetWindowThreadProcessId, OpenProcess, QueryFullProcessImageNameW,
-        PROCESS_NAME_FORMAT, PROCESS_QUERY_INFORMATION, PROCESS_VMREAD,
+        PROCESS_NAME_FORMAT, PROCESS_QUERY_INFORMATION,
     };
 
     unsafe {
@@ -58,12 +58,12 @@ fn get_active_window_windows() -> Result<(String, String), String> {
 fn get_process_name_windows(pid: u32) -> Option<String> {
     use windows::Win32::System::Threading::{
         OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_FORMAT,
-        PROCESS_QUERY_INFORMATION, PROCESS_VMREAD,
+        PROCESS_QUERY_INFORMATION,
     };
 
     unsafe {
         let handle = OpenProcess(
-            PROCESS_QUERY_INFORMATION | PROCESS_VMREAD,
+            PROCESS_QUERY_INFORMATION,
             false,
             pid,
         )

@@ -69,13 +69,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # macOS signing (optional — works unsigned without these)
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Tunesoar ${{ github.ref_name }}"
@@ -86,9 +79,11 @@ jobs:
 
             ### Downloads
             - **Windows:** `Tunesoar_*_x64-setup.exe` (.msi also available)
-            - **macOS Apple Silicon (M1/M2/M3):** `Tunesoar_*_aarch64.dmg`
-            - **macOS Intel:** `Tunesoar_*_x64.dmg`
+            - **macOS Apple Silicon (M1/M2/M3):** `Tunesoar_*_aarch64.dmg` (unsigned — right-click → Open)
+            - **macOS Intel:** `Tunesoar_*_x64.dmg` (unsigned — right-click → Open)
             - **Linux:** `tunesoar_*_amd64.deb` or `tunesoar_*_amd64.AppImage`
+
+            > ⚠️ macOS builds are ad-hoc signed. Right-click → Open on first launch.
 
             See [CHANGELOG.md](./CHANGELOG.md) for full details.
           releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
