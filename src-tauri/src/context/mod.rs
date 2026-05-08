@@ -1,5 +1,6 @@
 pub mod defaults;
 pub mod detector;
+pub mod platform;
 
 use detector::ContextDetector;
 use std::sync::{Arc, Mutex};

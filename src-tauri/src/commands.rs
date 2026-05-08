@@ -52,8 +52,10 @@ pub fn get_status(
         window_title: current_ctx.as_ref()
             .map(|c| c.window_title.clone())
             .unwrap_or_default(),
+        url: current_ctx.as_ref()
+            .and_then(|c| c.url.clone()),
         auto_detect_enabled: auto_enabled,
-        manual_override: manual_ov.map(|c| format!("{:?}", c)),
+        manual_override: manual_ov.as_ref().map(|c| format!("{:?}", c)),
         beat_type: profile.as_ref()
             .map(|p| format!("{:?}", p.beat_type))
             .unwrap_or_else(|| "None".to_string()),
@@ -109,7 +111,7 @@ pub fn detect_context(
     let browser_url = context.browser_url.lock().unwrap().clone();
 
     // Get active window
-    let (window_title, app_name) = match crate::context::detector::platform::get_active_window() {
+    let (window_title, app_name) = match crate::context::platform::get_active_window() {
         Ok(result) => result,
         Err(e) => {
             log::warn!("Could not detect active window: {}", e);

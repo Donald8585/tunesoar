@@ -1,7 +1,7 @@
 pub mod menu;
 
 use tauri::{
-    AppHandle, Runtime,
+    AppHandle, Emitter, Runtime,
     menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager,
