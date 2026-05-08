@@ -231,10 +231,10 @@ fn get_active_window_linux() -> Result<(String, String), String> {
         .reply()
         .map_err(|e| format!("Reply: {}", e))?;
 
-    // value32() returns an iterator in x11rb 0.13
-    let raw: Vec<u32> = active.value32().collect();
-    let raw = if raw.len() >= 1 && raw[0] != 0 {
-        raw[0]
+    // value32() returns Option<impl Iterator> in x11rb 0.13
+    let raw_vals: Vec<u32> = active.value32().map(|it| it.collect()).unwrap_or_default();
+    let raw = if raw_vals.len() >= 1 && raw_vals[0] != 0 {
+        raw_vals[0]
     } else {
         return Ok(("Desktop".to_string(), "Unknown".to_string()));
     };
@@ -261,7 +261,7 @@ fn get_active_window_linux() -> Result<(String, String), String> {
         .ok()
         .and_then(|r| r.reply().ok())
         .and_then(|r| {
-            let vals: Vec<u32> = r.value32().collect();
+            let vals: Vec<u32> = r.value32().map(|it| it.collect()).unwrap_or_default();
             if vals.is_empty() { None } else { Some(vals[0]) }
         })
         .and_then(|pid| std::fs::read_to_string(format!("/proc/{}/comm", pid)).ok())
