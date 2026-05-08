@@ -60,6 +60,7 @@ function layout(title: string, body: string, currentPage = ""): string {
   <a href="/" class="brand">${NAV_LOGO}TuneSoar</a>
   <div class="nav-right">
     ${navLink("/", "Home")}
+    ${navLink("/downloads", "Downloads")}
     ${navLink("/pricing", "Pricing")}
     ${navLink("/account", "Account")}
   </div>
@@ -79,3 +80,117 @@ function layout(title: string, body: string, currentPage = ""): string {
 
 export const HOME_PAGE = layout("Context-Aware Binaural Beats", `
 <div style="text-align:center;padding:80px 0 40px">
+
+
+// ────────────────────────────────────────────────────────────────────
+
+export const DOWNLOAD_PAGE = layout("Download", `
+<div style="padding:80px 0 40px;text-align:center">
+<h1>Download TuneSoar</h1>
+<p>Choose your platform below. All versions auto-update.</p>
+</div>
+
+<div id="dl-root" style="margin-top:32px">
+  <div style="text-align:center;padding:48px">
+    <p>Loading latest release…</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var REPO = "Donald8585/tunesoar";
+  var root = document.getElementById("dl-root");
+
+  function detectOS() {
+    var ua = navigator.userAgent;
+    if (/Mac/i.test(ua)) {
+      try { return navigator.userAgentData.platform && /arm|aarch64/i.test(navigator.userAgentData.platform) ? "mac-arm" : "mac-intel"; }
+      catch(e) { return "mac-intel"; }
+    }
+    if (/Windows/i.test(ua)) return "windows";
+    if (/Linux/i.test(ua) || /X11/i.test(ua)) return "linux";
+    return "unknown";
+  }
+
+  function pickAsset(os, assets) {
+    var find = function(re) { for (var i=0; i<assets.length; i++) if (re.test(assets[i].name)) return assets[i]; return null; };
+    switch(os) {
+      case "mac-arm": return find(/aarch64.*\\.dmg$/) || find(/\\.dmg$/);
+      case "mac-intel": return find(/x64.*\\.dmg$/) || find(/\\.dmg$/);
+      case "windows": return find(/-setup\\.exe$/) || find(/\\.msi$/);
+      case "linux": return find(/\\.AppImage$/) || find(/\\.deb$/);
+      default: return null;
+    }
+  }
+
+  var osLabels = {
+    "mac-arm": "Download for Mac (Apple Silicon)",
+    "mac-intel": "Download for Mac (Intel)",
+    "windows": "Download for Windows",
+    "linux": "Download for Linux",
+    "unknown": "View all downloads"
+  };
+
+  var os = detectOS();
+
+  fetch("https://api.github.com/repos/"+REPO+"/releases/latest")
+    .then(function(r) { return r.json(); })
+    .then(function(release) {
+      var primary = pickAsset(os, release.assets);
+      var tag = (release.tag_name||"v0.1.0").replace(/^v/,"");
+
+      var groups = { "macOS": [], "Windows": [], "Linux": [] };
+      release.assets.forEach(function(a) {
+        if (/\.dmg$/.test(a.name)) groups["macOS"].push(a);
+        else if (/\.(exe|msi)$/i.test(a.name)) groups["Windows"].push(a);
+        else if (/\.(deb|AppImage)$/i.test(a.name)) groups["Linux"].push(a);
+      });
+
+      var html = "";
+
+      // Hero download button
+      if (primary) {
+        html += '<div style="text-align:center;margin-bottom:48px">';
+        html += '<a href="'+primary.browser_download_url+'" class="btn primary" style="font-size:1.1rem;padding:14px 32px">';
+        html += '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ';
+        html += osLabels[os] + " — v" + tag;
+        html += '</a>';
+        html += '<p style="margin-top:8px;font-size:.82rem;color:#555">' + (primary.size/1024/1024).toFixed(1) + ' MB · Auto-updates included</p>';
+        html += '</div>';
+      }
+
+      // All platforms grid
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">';
+      Object.keys(groups).forEach(function(platform) {
+        html += '<div class="card"><h3>'+platform+'</h3>';
+        groups[platform].forEach(function(a) {
+          html += '<a href="'+a.browser_download_url+'" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:8px;text-decoration:none;color:#c4c4d4;border:1px solid #1a1a2a;margin-bottom:8px;transition:all .15s" onmouseover="this.style.borderColor=\'#4747ff\';this.style.color=\'#fff\'" onmouseout="this.style.borderColor=\'#1a1a2a\';this.style.color=\'#c4c4d4\'">';
+          html += '<span style="font-size:.85rem;font-family:monospace">'+a.name+'</span>';
+          html += '<span style="font-size:.75rem;color:#555">'+(a.size/1024/1024).toFixed(1)+' MB</span>';
+          html += '</a>';
+        });
+        html += '</div>';
+      });
+      html += '</div>';
+
+      // One-liner installers
+      html += '<div style="margin-top:48px;text-align:center">';
+      html += '<h2>One-liner install</h2>';
+      html += '<p style="margin-bottom:24px">Paste into your terminal:</p>';
+      html += '<pre style="text-align:left;max-width:560px;margin:0 auto 12px">curl -fsSL https://tunesoar.com/install.sh | bash</pre>';
+      html += '<p style="font-size:.78rem">or on Windows PowerShell:</p>';
+      html += '<pre style="text-align:left;max-width:560px;margin:0 auto">irm https://tunesoar.com/install.ps1 | iex</pre>';
+      html += '</div>';
+
+      root.innerHTML = html;
+    })
+    .catch(function() {
+      root.innerHTML = '<div style="text-align:center;padding:48px">' +
+        '<p>Unable to load release data.</p>' +
+        '<a href="https://github.com/'+REPO+'/releases/latest" class="btn primary" style="margin-top:16px">View on GitHub Releases</a>' +
+        '</div>';
+    });
+})();
+</script>
+`, "/downloads");
+

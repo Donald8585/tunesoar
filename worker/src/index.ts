@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import { verifyToken } from "@clerk/backend";
 import Stripe from "stripe";
 import {
-  HOME_PAGE, PRICING_PAGE, ACCOUNT_PAGE,
+  HOME_PAGE, DOWNLOAD_PAGE, PRICING_PAGE, ACCOUNT_PAGE,
   PRIVACY_PAGE, TERMS_PAGE, SAFETY_PAGE,
 } from "./pages";
 
@@ -128,6 +128,7 @@ app.get("/account", (c) => new Response(ACCOUNT_PAGE, { headers: { "Content-Type
 app.get("/privacy", (c) => new Response(PRIVACY_PAGE, { headers: { "Content-Type": "text/html; charset=utf-8" } }));
 app.get("/terms", (c) => new Response(TERMS_PAGE, { headers: { "Content-Type": "text/html; charset=utf-8" } }));
 app.get("/safety", (c) => new Response(SAFETY_PAGE, { headers: { "Content-Type": "text/html; charset=utf-8" } }));
+app.get("/downloads", (c) => new Response(DOWNLOAD_PAGE, { headers: { "Content-Type": "text/html; charset=utf-8" } }));
 
 // ── Install Scripts ──
 
