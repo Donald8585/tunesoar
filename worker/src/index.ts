@@ -9,6 +9,7 @@ import {
 
 interface Env {
   DB: D1Database;
+  RELEASES: R2Bucket;
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
   CLERK_SECRET_KEY: string;
@@ -87,37 +88,77 @@ app.post("/deactivate", async(c) => {
   return Response.json({success:true,devices_remaining:nd.length});
 });
 
-// ── Release CDN ──
+// ── Release CDN (R2-backed) ──
 
-const REPO_OWNER="Donald8585", REPO_NAME="tunesoar";
-
-function assetPat(platform:string, arch:string): RegExp {
-  const m:Record<string,RegExp>={"windows-x64":/TuneSoar_.*_x64-setup\.exe$/,"macos-x64":/TuneSoar_.*_x64\.dmg$/,"macos-arm64":/TuneSoar_.*_aarch64\.dmg$/,"linux-x64":/[Tt]unesoar_.*_amd64\.AppImage$/,"linux-arm64":/[Tt]unesoar_.*_arm64\.AppImage$/};
-  return m[`${platform}-${arch}`]??/./;
+function fileName(platform:string, arch:string): string|null {
+  const m:Record<string,string>={
+    "windows-x64":"TuneSoar_0.1.0_x64-setup.exe",
+    "macos-x64":"TuneSoar_0.1.0_x64.dmg",
+    "macos-arm64":"TuneSoar_0.1.0_aarch64.dmg",
+    "linux-x64":"TuneSoar_0.1.0_amd64.AppImage",
+  };
+  return m[`${platform}-${arch}`]??null;
 }
+
+function contentType(fn:string): string {
+  if(fn.endsWith(".exe")) return "application/vnd.microsoft.portable-executable";
+  if(fn.endsWith(".msi")) return "application/x-msi";
+  if(fn.endsWith(".dmg")) return "application/x-apple-diskimage";
+  if(fn.endsWith(".deb")) return "application/vnd.debian.binary-package";
+  if(fn.endsWith(".AppImage")) return "application/octet-stream";
+  if(fn.endsWith(".rpm")) return "application/x-rpm";
+  if(fn.endsWith(".tar.gz")) return "application/gzip";
+  return "application/octet-stream";
+}
+
+app.get("/releases/download/:filename", async(c) => {
+  const fn=c.req.param("filename");
+  const obj=await c.env.RELEASES.get(fn);
+  if(!obj) return c.notFound();
+  const headers=new Headers();
+  obj.writeHttpMetadata(headers);
+  headers.set("Content-Type",contentType(fn));
+  headers.set("Cache-Control","public, max-age=3600");
+  headers.set("Content-Disposition",`attachment; filename="${fn}"`);
+  return new Response(obj.body,{headers});
+});
 
 app.get("/releases/latest/:platform/:arch", async(c) => {
   const platform=c.req.param("platform"), arch=c.req.param("arch");
-  const r=await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`,{headers:{Authorization:`Bearer ${c.env.GITHUB_TOKEN}`,"User-Agent":"tunesoar-worker",Accept:"application/vnd.github.v3+json"}});
-  if(!r.ok) return Response.json({error:"Failed to fetch release"},{status:502});
-  const release:any=await r.json(); const asset=release.assets?.find((a:any)=>assetPat(platform,arch).test(a.name));
-  if(!asset) return Response.json({error:"No matching asset",platform,arch},{status:404});
-  const dl=await fetch(asset.url,{headers:{Authorization:`Bearer ${c.env.GITHUB_TOKEN}`,"User-Agent":"tunesoar-worker",Accept:"application/octet-stream"},redirect:"follow"});
-  if(!dl.ok) return Response.json({error:"Download failed"},{status:502});
-  return new Response(dl.body,{status:200,headers:{"Content-Type":dl.headers.get("Content-Type")??"application/octet-stream","Content-Disposition":`attachment; filename="${asset.name}"`,"Content-Length":dl.headers.get("Content-Length")??asset.size?.toString()??"0","Cache-Control":"public, max-age=3600"}});
+  const fn=fileName(platform,arch);
+  if(!fn) return Response.json({error:"Unsupported platform",platform,arch},{status:404});
+  const obj=await c.env.RELEASES.get(fn);
+  if(!obj) return Response.json({error:"Asset not found"},{status:404});
+  const headers=new Headers();
+  obj.writeHttpMetadata(headers);
+  headers.set("Content-Type",contentType(fn));
+  headers.set("Cache-Control","public, max-age=3600");
+  headers.set("Content-Disposition",`attachment; filename="${fn}"`);
+  return new Response(obj.body,{headers});
 });
 
 app.get("/releases/updater/:target/:arch/:current_version", async(c) => {
-  const target=c.req.param("target"), arch=c.req.param("arch"), cv=c.req.param("current_version");
-  const r=await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`,{headers:{Authorization:`Bearer ${c.env.GITHUB_TOKEN}`,"User-Agent":"tunesoar-updater",Accept:"application/vnd.github.v3+json"}});
-  if(!r.ok) return Response.json({error:"Failed to fetch release"},{status:502});
-  const release:any=await r.json(); const lv=(release.tag_name??"v0.0.0").replace(/^v/,"");
+  const cv=c.req.param("current_version");
+  const manifestObj=await c.env.RELEASES.get("latest.json");
+  if(!manifestObj) return Response.json({error:"No manifest"},{status:502});
+
+  const manifest:any=await manifestObj.json();
+  const lv=(manifest.version??"0.0.0").replace(/^v/,"");
   if(lv===cv.replace(/^v/,"")) return new Response(null,{status:204});
-  const sp=new RegExp(`TuneSoar_.*_${arch}.*\\.(exe\\.zip\\.sig|app\\.tar\\.gz\\.sig|AppImage\\.tar\\.gz\\.sig)$`,"i");
-  const sa=release.assets?.find((a:any)=>sp.test(a.name)); if(!sa) return new Response(null,{status:204});
-  const sr=await fetch(sa.url,{headers:{Authorization:`Bearer ${c.env.GITHUB_TOKEN}`,"User-Agent":"tunesoar-updater",Accept:"application/octet-stream"}});
-  const sig=await sr.text(); const host=c.req.header("host")??"tunesoar.com";
-  return Response.json({version:`v${lv}`,notes:release.body??"",pub_date:release.published_at??new Date().toISOString(),platforms:{[target]:{signature:sig,url:`https://${host}/releases/latest/${target==="darwin"?"macos":target}/${arch}`}}});
+
+  // Rewrite download URLs to point to Cloudflare CDN
+  const host=c.req.header("host")??"tunesoar.com";
+  const rewritten:any={...manifest};
+  if(rewritten.platforms) {
+    for(const key of Object.keys(rewritten.platforms)) {
+      const url=rewritten.platforms[key].url;
+      if(url) {
+        const fn=url.split("/").pop();
+        rewritten.platforms[key].url=`https://${host}/releases/download/${fn}`;
+      }
+    }
+  }
+  return Response.json(rewritten);
 });
 
 // ── Site Pages ──

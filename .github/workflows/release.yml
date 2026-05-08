@@ -89,3 +89,41 @@ jobs:
           releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
           prerelease: false
           args: ${{ matrix.args }}
+
+  r2-upload:
+    needs: publish-tauri
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload release assets to R2
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET: tunesoar-releases
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          echo "Processing release: $TAG"
+
+          # Get release assets
+          ASSETS=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets -q '.assets[] | "\(.name)|\(.url)"')
+
+          for line in $ASSETS; do
+            NAME="${line%%|*}"
+            URL="${line##*|}"
+            echo "Uploading: $NAME"
+
+            # Download from GitHub and pipe to R2
+            curl -sfL -H "Authorization: Bearer $GH_TOKEN" \
+                 -H "Accept: application/octet-stream" \
+                 "$URL" | \
+            curl -sf -X PUT \
+                 "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/r2/buckets/$R2_BUCKET/objects/$NAME" \
+                 -H "Authorization: Bearer $CF_API_TOKEN" \
+                 --data-binary @-
+            echo "  ✓ $NAME"
+          done
+
+          echo ""
+          echo "All assets synced to R2 ✅"
+          echo "Updater: https://api.tunesoar.com/releases/updater/linux-x86_64/x86_64/0.0.0"

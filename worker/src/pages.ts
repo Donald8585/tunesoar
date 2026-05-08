@@ -81,14 +81,18 @@ function layout(title: string, body: string, currentPage = ""): string {
 
 export const HOME_PAGE = layout("Context-Aware Binaural Beats", `
 <div style="text-align:center;padding:80px 0 40px">
-
+<h1>Context-Aware Binaural Beats</h1>
+<p>Automatically switches binaural beat profiles based on what you're doing.</p>
+<a href="/downloads" class="btn primary" style="margin-top:16px">Download for Free</a>
+</div>
+`);
 
 // ────────────────────────────────────────────────────────────────────
 
 export const DOWNLOAD_PAGE = layout("Download", `
 <div style="padding:80px 0 40px;text-align:center">
 <h1>Download TuneSoar</h1>
-<p>Choose your platform below. All versions auto-update.</p>
+<p>Choose your platform below. All versions auto-update.<br><span style="font-size:.78rem;color:#555">Downloads served via Cloudflare CDN ⚡</span></p>
 </div>
 
 <div id="dl-root" style="margin-top:32px">
@@ -99,8 +103,25 @@ export const DOWNLOAD_PAGE = layout("Download", `
 
 <script>
 (function(){
-  var REPO = "Donald8585/tunesoar";
+  var CDN = "https://tunesoar.com/releases/download";
   var root = document.getElementById("dl-root");
+
+  // Asset catalog — serves as fallback + sizes
+  var CATALOG = {
+    windows: [
+      {name:"TuneSoar_0.1.0_x64-setup.exe",label:"Windows Installer (.exe)",size:2.4},
+      {name:"TuneSoar_0.1.0_x64_en-US.msi",label:"Windows MSI",size:3.3}
+    ],
+    mac: [
+      {name:"TuneSoar_0.1.0_aarch64.dmg",label:"macOS Apple Silicon (.dmg)",size:3.5},
+      {name:"TuneSoar_0.1.0_x64.dmg",label:"macOS Intel (.dmg)",size:3.7}
+    ],
+    linux: [
+      {name:"TuneSoar_0.1.0_amd64.deb",label:"Linux .deb",size:3.6},
+      {name:"TuneSoar_0.1.0_amd64.AppImage",label:"Linux AppImage",size:79.6},
+      {name:"TuneSoar-0.1.0-1.x86_64.rpm",label:"Linux .rpm",size:3.6}
+    ]
+  };
 
   function detectOS() {
     var ua = navigator.userAgent;
@@ -113,17 +134,6 @@ export const DOWNLOAD_PAGE = layout("Download", `
     return "unknown";
   }
 
-  function pickAsset(os, assets) {
-    var find = function(re) { for (var i=0; i<assets.length; i++) if (re.test(assets[i].name)) return assets[i]; return null; };
-    switch(os) {
-      case "mac-arm": return find(/aarch64.*\\.dmg$/) || find(/\\.dmg$/);
-      case "mac-intel": return find(/x64.*\\.dmg$/) || find(/\\.dmg$/);
-      case "windows": return find(/-setup\\.exe$/) || find(/\\.msi$/);
-      case "linux": return find(/\\.AppImage$/) || find(/\\.deb$/);
-      default: return null;
-    }
-  }
-
   var osLabels = {
     "mac-arm": "Download for Mac (Apple Silicon)",
     "mac-intel": "Download for Mac (Intel)",
@@ -134,40 +144,39 @@ export const DOWNLOAD_PAGE = layout("Download", `
 
   var os = detectOS();
 
-  fetch("https://api.github.com/repos/"+REPO+"/releases/latest")
+  // Try to fetch latest version from updater API
+  fetch("https://api.tunesoar.com/releases/updater/windows-x86_64/x86_64/0.0.0")
     .then(function(r) { return r.json(); })
-    .then(function(release) {
-      var primary = pickAsset(os, release.assets);
-      var tag = (release.tag_name||"v0.1.0").replace(/^v/,"");
-
-      var groups = { "macOS": [], "Windows": [], "Linux": [] };
-      release.assets.forEach(function(a) {
-        if (/\.dmg$/.test(a.name)) groups["macOS"].push(a);
-        else if (/\.(exe|msi)$/i.test(a.name)) groups["Windows"].push(a);
-        else if (/\.(deb|AppImage)$/i.test(a.name)) groups["Linux"].push(a);
-      });
-
+    .then(function(manifest) {
+      var tag = (manifest.version||"0.1.0");
       var html = "";
 
-      // Hero download button
-      if (primary) {
+      // Pick best download for detected OS
+      var primaryFile = null;
+      if (os === "windows") primaryFile = CATALOG.windows[0];
+      else if (os === "mac-intel") primaryFile = CATALOG.mac[1];
+      else if (os === "mac-arm") primaryFile = CATALOG.mac[0];
+      else if (os === "linux") primaryFile = CATALOG.linux[0];
+
+      if (primaryFile) {
         html += '<div style="text-align:center;margin-bottom:48px">';
-        html += '<a href="'+primary.browser_download_url+'" class="btn primary" style="font-size:1.1rem;padding:14px 32px">';
+        html += '<a href="'+CDN+'/'+primaryFile.name+'" class="btn primary" style="font-size:1.1rem;padding:14px 32px">';
         html += '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ';
-        html += osLabels[os] + " — v" + tag;
+        html += osLabels[os] + " — " + tag;
         html += '</a>';
-        html += '<p style="margin-top:8px;font-size:.82rem;color:#555">' + (primary.size/1024/1024).toFixed(1) + ' MB · Auto-updates included</p>';
+        html += '<p style="margin-top:8px;font-size:.82rem;color:#555">' + primaryFile.size.toFixed(1) + ' MB · Served via Cloudflare CDN ⚡</p>';
         html += '</div>';
       }
 
       // All platforms grid
       html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">';
-      Object.keys(groups).forEach(function(platform) {
-        html += '<div class="card"><h3>'+platform+'</h3>';
-        groups[platform].forEach(function(a) {
-          html += '<a href="'+a.browser_download_url+'" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:8px;text-decoration:none;color:#c4c4d4;border:1px solid #1a1a2a;margin-bottom:8px;transition:all .15s" onmouseover="this.style.borderColor=\'#4747ff\';this.style.color=\'#fff\'" onmouseout="this.style.borderColor=\'#1a1a2a\';this.style.color=\'#c4c4d4\'">';
-          html += '<span style="font-size:.85rem;font-family:monospace">'+a.name+'</span>';
-          html += '<span style="font-size:.75rem;color:#555">'+(a.size/1024/1024).toFixed(1)+' MB</span>';
+      var groups = {"🪟 Windows":CATALOG.windows,"🍎 macOS":CATALOG.mac,"🐧 Linux":CATALOG.linux};
+      Object.keys(groups).forEach(function(label) {
+        html += '<div class="card"><h3>'+label+'</h3>';
+        groups[label].forEach(function(a) {
+          html += '<a href="'+CDN+'/'+a.name+'" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:8px;text-decoration:none;color:#c4c4d4;border:1px solid #1a1a2a;margin-bottom:8px;transition:all .15s" onmouseover="this.style.borderColor=\'#4747ff\';this.style.color=\'#fff\'" onmouseout="this.style.borderColor=\'#1a1a2a\';this.style.color=\'#c4c4d4\'">';
+          html += '<span style="font-size:.85rem;font-family:monospace">'+a.label+'</span>';
+          html += '<span style="font-size:.75rem;color:#555">'+a.size.toFixed(1)+' MB</span>';
           html += '</a>';
         });
         html += '</div>';
@@ -186,10 +195,19 @@ export const DOWNLOAD_PAGE = layout("Download", `
       root.innerHTML = html;
     })
     .catch(function() {
-      root.innerHTML = '<div style="text-align:center;padding:48px">' +
-        '<p>Unable to load release data.</p>' +
-        '<a href="https://github.com/'+REPO+'/releases/latest" class="btn primary" style="margin-top:16px">View on GitHub Releases</a>' +
-        '</div>';
+      // Fallback: show static links
+      var html = '<div style="text-align:center;margin-bottom:48px"><a href="'+CDN+'/TuneSoar_0.1.0_x64-setup.exe" class="btn primary" style="font-size:1.1rem;padding:14px 32px">Download for Windows</a></div>';
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">';
+      var groups = {"🪟 Windows":CATALOG.windows,"🍎 macOS":CATALOG.mac,"🐧 Linux":CATALOG.linux};
+      Object.keys(groups).forEach(function(label) {
+        html += '<div class="card"><h3>'+label+'</h3>';
+        groups[label].forEach(function(a) {
+          html += '<a href="'+CDN+'/'+a.name+'" class="btn" style="width:100%;text-align:left;margin-bottom:8px">'+a.label+' · '+a.size.toFixed(1)+' MB</a>';
+        });
+        html += '</div>';
+      });
+      html += '</div>';
+      root.innerHTML = html;
     });
 })();
 </script>
@@ -197,15 +215,159 @@ export const DOWNLOAD_PAGE = layout("Download", `
 <div style="text-align:center;margin-top:32px;padding:24px;background:#12121a;border:1px solid #2a2a3a;border-radius:12px;max-width:600px;margin-left:auto;margin-right:auto">
   <h3 style="margin-top:0">Direct Downloads — v0.1.0</h3>
   <div style="display:flex;flex-direction:column;gap:10px;text-align:left">
-    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_x64-setup.exe" class="btn" style="display:flex;justify-content:space-between"><span>🪟 Windows Installer</span><span style="color:#555">2.4 MB</span></a>
-    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_x64_en-US.msi" class="btn" style="display:flex;justify-content:space-between"><span>🪟 Windows MSI</span><span style="color:#555">3.3 MB</span></a>
-    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_aarch64.dmg" class="btn" style="display:flex;justify-content:space-between"><span>🍎 macOS (Apple Silicon M1/M2/M3)</span><span style="color:#555">3.5 MB</span></a>
-    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_x64.dmg" class="btn" style="display:flex;justify-content:space-between"><span>🍎 macOS (Intel)</span><span style="color:#555">3.7 MB</span></a>
-    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_amd64.deb" class="btn" style="display:flex;justify-content:space-between"><span>🐧 Linux .deb</span><span style="color:#555">3.6 MB</span></a>
-    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_amd64.AppImage" class="btn" style="display:flex;justify-content:space-between"><span>🐧 Linux AppImage</span><span style="color:#555">79.6 MB</span></a>
+    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_x64-setup.exe" class="btn" style="display:flex;justify-content:space-between"><span>🪟 Windows Installer</span><span style="color:#555">2.4 MB</span></a>
+    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_x64_en-US.msi" class="btn" style="display:flex;justify-content:space-between"><span>🪟 Windows MSI</span><span style="color:#555">3.3 MB</span></a>
+    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_aarch64.dmg" class="btn" style="display:flex;justify-content:space-between"><span>🍎 macOS (Apple Silicon M1/M2/M3)</span><span style="color:#555">3.5 MB</span></a>
+    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_x64.dmg" class="btn" style="display:flex;justify-content:space-between"><span>🍎 macOS (Intel)</span><span style="color:#555">3.7 MB</span></a>
+    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_amd64.deb" class="btn" style="display:flex;justify-content:space-between"><span>🐧 Linux .deb</span><span style="color:#555">3.6 MB</span></a>
+    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_amd64.AppImage" class="btn" style="display:flex;justify-content:space-between"><span>🐧 Linux AppImage</span><span style="color:#555">79.6 MB</span></a>
   </div>
   <p style="margin-top:16px;font-size:.78rem;color:#555">⚠️ macOS builds are ad-hoc signed — Right-click → Open on first launch</p>
 </div>
 
 `, "/downloads");
+
+// ────────────────────────────────────────────────────────────────────
+
+export const PRICING_PAGE = layout("Pricing", `
+<div style="padding:80px 0 40px;text-align:center">
+<h1>Pricing</h1>
+<p>Simple, transparent pricing for TuneSoar.</p>
+</div>
+<div class="pricing-grid" style="max-width:720px;margin:0 auto">
+<div class="pricing-card">
+<div class="price">Free</div>
+<div class="period">forever</div>
+<ul>
+<li>All binaural beat profiles</li>
+<li>Auto context detection</li>
+<li>System tray mode</li>
+<li>Basic support</li>
+</ul>
+<a href="/downloads" class="btn" style="width:100%;text-align:center;justify-content:center">Get Started</a>
+</div>
+<div class="pricing-card featured">
+<div class="price">$4.99</div>
+<div class="period">/ month</div>
+<ul>
+<li>Everything in Free</li>
+<li>Custom beat profiles</li>
+<li>Priority support</li>
+<li>Early access features</li>
+</ul>
+<a href="/account" class="btn primary" style="width:100%;text-align:center;justify-content:center">Subscribe</a>
+</div>
+<div class="pricing-card">
+<div class="price">$49</div>
+<div class="period">lifetime</div>
+<ul>
+<li>Everything in Monthly</li>
+<li>Lifetime access</li>
+<li>All future updates</li>
+<li>Vote on roadmap</li>
+</ul>
+<a href="/account" class="btn" style="width:100%;text-align:center;justify-content:center">Buy Once</a>
+</div>
+</div>
+`, "/pricing");
+
+// ────────────────────────────────────────────────────────────────────
+
+export const ACCOUNT_PAGE = layout("Account", `
+<div style="padding:80px 0 40px;text-align:center">
+<h1>Account</h1>
+<p>Sign in to manage your license and subscription.</p>
+</div>
+<div id="clerk-root" style="max-width:400px;margin:0 auto"></div>
+<script>
+(function(){
+  if(window.Clerk){
+    Clerk.mountSignIn(document.getElementById("clerk-root"),{
+      afterSignInUrl:"/account",
+      afterSignUpUrl:"/account"
+    });
+  }
+})();
+</script>
+`, "/account");
+
+// ────────────────────────────────────────────────────────────────────
+
+export const PRIVACY_PAGE = layout("Privacy Policy", `
+<div style="padding:80px 0 40px">
+<h1>Privacy Policy</h1>
+<p>Last updated: May 2026</p>
+<div class="card">
+<h3>Data Collection</h3>
+<p>TuneSoar does not collect personal data. The app runs entirely on your device. The only data transmitted is:</p>
+<ul style="padding-left:20px;color:#8a8a9a">
+<li>Anonymous update checks (version number only)</li>
+<li>License verification (if you have a paid plan)</li>
+</ul>
+</div>
+<div class="card">
+<h3>Third-Party Services</h3>
+<p>We use Clerk for authentication (account page only) and Stripe for payment processing. Their respective privacy policies apply when you interact with those services.</p>
+</div>
+<div class="card">
+<h3>Contact</h3>
+<p>Questions? Reach out at fiverrkroft@gmail.com</p>
+</div>
+</div>
+`, "/privacy");
+
+// ────────────────────────────────────────────────────────────────────
+
+export const TERMS_PAGE = layout("Terms of Service", `
+<div style="padding:80px 0 40px">
+<h1>Terms of Service</h1>
+<p>Last updated: May 2026</p>
+<div class="card">
+<h3>License</h3>
+<p>TuneSoar is provided as-is. The free version is for personal use. Paid plans grant additional features as described on the pricing page.</p>
+</div>
+<div class="card">
+<h3>Refunds</h3>
+<p>Monthly subscriptions can be cancelled anytime. Lifetime purchases are final. Contact us if you have issues.</p>
+</div>
+<div class="card">
+<h3>Limitation of Liability</h3>
+<p>TranceLab is not liable for any damages arising from the use of TuneSoar. The app provides audio entertainment and is not a medical device.</p>
+</div>
+</div>
+`, "/terms");
+
+// ────────────────────────────────────────────────────────────────────
+
+export const SAFETY_PAGE = layout("Safety", `
+<div style="padding:80px 0 40px">
+<h1>Safety Information</h1>
+<div class="card">
+<h3>⚠️ Important</h3>
+<p>Binaural beats may affect brainwave activity. Please read the following before using TuneSoar.</p>
+</div>
+<div class="card">
+<h3>Who Should Avoid</h3>
+<ul style="padding-left:20px;color:#8a8a9a">
+<li>People with epilepsy or seizure disorders</li>
+<li>People with pacemakers or other implanted medical devices</li>
+<li>People prone to photosensitive reactions</li>
+<li>Children under 13 without supervision</li>
+</ul>
+</div>
+<div class="card">
+<h3>Safe Use Guidelines</h3>
+<ul style="padding-left:20px;color:#8a8a9a">
+<li>Keep volume at a comfortable level</li>
+<li>Take breaks every 60 minutes</li>
+<li>Do not use while operating heavy machinery</li>
+<li>Stop use if you experience discomfort or headaches</li>
+</ul>
+</div>
+<div class="card">
+<h3>Medical Disclaimer</h3>
+<p>TuneSoar is an entertainment and productivity tool. It is not a medical device and is not intended to diagnose, treat, cure, or prevent any condition. Consult a healthcare professional for medical advice.</p>
+</div>
+</div>
+`, "/safety");
 

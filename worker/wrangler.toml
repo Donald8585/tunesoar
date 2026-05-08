@@ -2,6 +2,10 @@ name = "tunesoar-api"
 main = "src/index.ts"
 compatibility_date = "2025-05-01"
 
+[[r2_buckets]]
+binding = "RELEASES"
+bucket_name = "tunesoar-releases"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "tunesoar"
