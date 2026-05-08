@@ -11,6 +11,7 @@ export function Account({ onBack }: Props) {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
   const [showSignUp, setShowSignUp] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [licenseInfo, setLicenseInfo] = useState<any>(null);
 
   useEffect(() => {

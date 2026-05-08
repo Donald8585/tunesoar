@@ -19,6 +19,7 @@ function App() {
 
   // Check if onboarding has been completed
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     invoke<string>("get_prefs").then((prefs: any) => {
       if (!prefs?.onboarding_completed) {
         setShowOnboarding(true);

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { APP_NAME, PRO_PRICE_MONTHLY, PRO_PRICE_LIFETIME } from "../lib/constants";
 import { Button } from "./ui/button";
-import { ArrowLeft, Check, Shield, Infinity, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Shield, Infinity as InfinityIcon, Sparkles } from "lucide-react";
 
 interface Props {
   onBack: () => void;
@@ -115,7 +115,7 @@ export function Upgrade({ onBack }: Props) {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium text-text-primary">Lifetime</h4>
-                <Infinity className="w-4 h-4 text-text-secondary" />
+                <InfinityIcon className="w-4 h-4 text-text-secondary" />
               </div>
               <div className="text-right">
                 <span className="text-lg font-bold text-text-primary">${PRO_PRICE_LIFETIME}</span>
