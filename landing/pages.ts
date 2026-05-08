@@ -144,4 +144,18 @@ export const DOWNLOAD_PAGE = layout("Download", `
     });
 })();
 </script>
+
+<div style="text-align:center;margin-top:32px;padding:24px;background:#12121a;border:1px solid #2a2a3a;border-radius:12px;max-width:600px;margin-left:auto;margin-right:auto">
+  <h3 style="margin-top:0">Direct Downloads — v0.1.0</h3>
+  <div style="display:flex;flex-direction:column;gap:10px;text-align:left">
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_x64-setup.exe" class="btn" style="display:flex;justify-content:space-between"><span>🪟 Windows Installer</span><span style="color:#555">2.4 MB</span></a>
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_x64_en-US.msi" class="btn" style="display:flex;justify-content:space-between"><span>🪟 Windows MSI</span><span style="color:#555">3.3 MB</span></a>
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_aarch64.dmg" class="btn" style="display:flex;justify-content:space-between"><span>🍎 macOS (Apple Silicon M1/M2/M3)</span><span style="color:#555">3.5 MB</span></a>
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_x64.dmg" class="btn" style="display:flex;justify-content:space-between"><span>🍎 macOS (Intel)</span><span style="color:#555">3.7 MB</span></a>
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_amd64.deb" class="btn" style="display:flex;justify-content:space-between"><span>🐧 Linux .deb</span><span style="color:#555">3.6 MB</span></a>
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_amd64.AppImage" class="btn" style="display:flex;justify-content:space-between"><span>🐧 Linux AppImage</span><span style="color:#555">79.6 MB</span></a>
+  </div>
+  <p style="margin-top:16px;font-size:.78rem;color:#555">⚠️ macOS builds are ad-hoc signed — Right-click → Open on first launch</p>
+</div>
+
 `, "/downloads");
