@@ -35,7 +35,7 @@ pub fn get_status(
     let current_ctx = context.detector.lock().unwrap()
         .current_context.lock().unwrap().clone();
     let auto_enabled = *context.detector.lock().unwrap().auto_detect_enabled.lock().unwrap();
-    let manual_ov = *context.detector.lock().unwrap().manual_override.lock().unwrap();
+    let manual_ov = context.detector.lock().unwrap().manual_override.lock().unwrap().clone();
 
     let profile = audio.current_profile.lock().unwrap();
     let volume = *audio.volume.lock().unwrap();

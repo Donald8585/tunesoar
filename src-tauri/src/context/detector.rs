@@ -270,8 +270,9 @@ impl ContextDetector {
 }
 impl ContextDetector {
     pub fn set_manual_override(&self, ctx: Option<ContextType>) {
+        let is_none = ctx.is_none();
         *self.manual_override.lock().unwrap() = ctx;
-        *self.auto_detect_enabled.lock().unwrap() = ctx.is_none();
+        *self.auto_detect_enabled.lock().unwrap() = is_none;
     }
     pub fn enable_auto_detect(&self) {
         *self.manual_override.lock().unwrap() = None;
