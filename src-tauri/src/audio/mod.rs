@@ -1,6 +1,6 @@
 pub mod binaural;
 
-use binaural::{BeatProfile, BinauralEngine};
+use binaural::BinauralEngine;
 use std::sync::{Arc, Mutex};
 use tauri::State;
 
@@ -128,6 +128,11 @@ pub struct DetectedContext {
     pub url: Option<String>,
     pub detected_at: i64,
 }
+
+// SAFETY: All fields are Arced Mutex-protected. The cpal types are
+// only accessed from within locked contexts on the same thread.
+unsafe impl Send for AudioState {}
+unsafe impl Sync for AudioState {}
 
 /// Update the active beat profile based on context
 pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext) {

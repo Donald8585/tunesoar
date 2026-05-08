@@ -11,6 +11,10 @@ pub struct ContextState {
     pub last_check: Mutex<i64>,
 }
 
+// SAFETY: All fields are Arc/Mutex protected
+unsafe impl Send for ContextState {}
+unsafe impl Sync for ContextState {}
+
 impl ContextState {
     pub fn new() -> Self {
         Self {

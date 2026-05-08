@@ -16,6 +16,9 @@ pub struct SafetyState {
     pub app_version: String,
 }
 
+unsafe impl Send for SafetyState {}
+unsafe impl Sync for SafetyState {}
+
 impl SafetyState {
     pub fn new(app_version: String) -> Self {
         Self {

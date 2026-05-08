@@ -156,8 +156,9 @@ pub fn set_manual_override(context_type: String, context: State<ContextState>) -
         "ambient" | "default" => ContextType::Ambient,
         _ => return Err(format!("Unknown: {}", context_type)),
     };
+    let ct_str = format!("{:?}", ct);
     detector.set_manual_override(Some(ct));
-    Ok(format!("{:?}", ct))
+    Ok(ct_str)
 }
 
 #[tauri::command]

@@ -29,6 +29,9 @@ pub struct LicenseState {
     pub verification_url: String,
 }
 
+unsafe impl Send for LicenseState {}
+unsafe impl Sync for LicenseState {}
+
 impl LicenseState {
     pub fn new() -> Self {
         Self {
