@@ -67,7 +67,7 @@ impl BeatType {
 }
 
 /// Context types that map to beat profiles
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ContextType {
     Coding,
     Writing,
