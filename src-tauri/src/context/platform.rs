@@ -91,9 +91,12 @@ fn get_active_window_macos() -> Result<(String, String), String> {
         // Get localized app name
         let name_obj: *mut Object = msg_send![app, localizedName];
         let app_name = if !name_obj.is_null() {
-            CStr::from_ptr((*name_obj).UTF8String as *const i8)
-                .to_string_lossy()
-                .to_string()
+            let utf8: *const i8 = msg_send![name_obj, UTF8String];
+            if utf8.is_null() {
+                "Unknown".to_string()
+            } else {
+                CStr::from_ptr(utf8).to_string_lossy().to_string()
+            }
         } else {
             "Unknown".to_string()
         };
@@ -136,15 +139,7 @@ fn macos_window_title(pid: i32) -> Result<String, String> {
         let code2 = macos_ax_copy_value(window, title_attr.as_ptr() as *const i8, &mut title_ref);
 
         let title = if code2 == 0 && !title_ref.is_null() {
-            // title_ref is an NSString (CFString). Read via objc.
-            use std::ffi::CStr;
-            let nsstr: &objc::runtime::Object = &*(title_ref as *const objc::runtime::Object);
-            let utf8: *const i8 = objc::msg_send![nsstr, UTF8String];
-            if utf8.is_null() {
-                "Unknown".to_string()
-            } else {
-                CStr::from_ptr(utf8).to_string_lossy().to_string()
-            }
+            macos_cfstring_to_string(title_ref)
         } else {
             "Unknown".to_string()
         };
@@ -187,6 +182,46 @@ unsafe fn macos_cf_release(cf: *mut std::ffi::c_void) {
     // Call CFRelease from CoreFoundation (linked by default on macOS)
     extern "C" { fn CFRelease(cf: *mut std::ffi::c_void); }
     CFRelease(cf);
+}
+
+#[cfg(target_os = "macos")]
+unsafe fn macos_cfstring_to_string(cf: *mut std::ffi::c_void) -> String {
+    use std::ffi::CStr;
+    // CFStringGetCStringPtr is fast if internal representation is UTF-8
+    extern "C" {
+        fn CFStringGetCStringPtr(
+            string: *mut std::ffi::c_void,
+            encoding: u32,
+        ) -> *const i8;
+        fn CFStringGetLength(string: *mut std::ffi::c_void) -> isize;
+        fn CFStringGetCString(
+            string: *mut std::ffi::c_void,
+            buffer: *mut i8,
+            buffer_size: isize,
+            encoding: u32,
+        ) -> i8;
+    }
+
+    // kCFStringEncodingUTF8 = 0x08000100
+    let utf8_encoding: u32 = 0x08000100;
+    let ptr = CFStringGetCStringPtr(cf, utf8_encoding);
+    if !ptr.is_null() {
+        return CStr::from_ptr(ptr).to_string_lossy().to_string();
+    }
+
+    // Fallback: allocate buffer
+    let len = CFStringGetLength(cf);
+    if len <= 0 {
+        return "Unknown".to_string();
+    }
+    // Estimate max UTF-8 size: 4 bytes per char + NUL
+    let buf_size = len * 4 + 1;
+    let mut buf: Vec<i8> = vec![0; buf_size as usize];
+    if CFStringGetCString(cf, buf.as_mut_ptr(), buf_size, utf8_encoding) != 0 {
+        CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string()
+    } else {
+        "Unknown".to_string()
+    }
 }
 
 // ── Linux ──────────────────────────────────────────────────────
