@@ -71,7 +71,9 @@ function layout(title: string, body: string, currentPage = ""): string {
   <a href="/privacy">Privacy</a> &middot; 
   <a href="/terms">Terms</a> &middot; 
   <a href="/safety">Safety</a> &middot; 
-  © TranceLab
+  <a href="mailto:alfredso@wealthmakermasterclass.com">Support</a>
+  <br><span style="color:#555">Bug reports / feature requests: <a href="mailto:alfredso@wealthmakermasterclass.com" style="color:#8b5cf6">alfredso@wealthmakermasterclass.com</a></span>
+  <br>© Wealth Maker Masterclass Limited
 </footer>
 </body>
 </html>`;
@@ -339,7 +341,7 @@ export const TERMS_PAGE = layout("Terms of Service", `
 </div>
 <div class="card">
 <h3>Limitation of Liability</h3>
-<p>TranceLab is not liable for any damages arising from the use of TuneSoar. The app provides audio entertainment and is not a medical device.</p>
+<p>Wealth Maker Masterclass Limited is not liable for any damages arising from the use of TuneSoar. The app provides audio entertainment and is not a medical device.</p>
 </div>
 </div>
 `, "/terms");
