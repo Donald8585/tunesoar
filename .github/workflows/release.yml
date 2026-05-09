@@ -10,10 +10,48 @@ permissions:
   contents: write
 
 jobs:
-  publish-tauri:
+  # ── Step 1: Create the GitHub Release first ──────────────────
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+      upload_url: ${{ steps.release.outputs.upload_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: echo "VERSION=v$(grep -Po '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json | head -1)" >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        id: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: "Tunesoar ${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## Tunesoar ${{ steps.version.outputs.VERSION }}
+
+            Context-aware binaural beats for your desktop.
+
+            ### Downloads
+            - **Windows:** `Tunesoar_*_x64-setup.exe` (.msi also available)
+            - **macOS Apple Silicon (M1/M2/M3):** `Tunesoar_*_aarch64.dmg` (unsigned — right-click → Open)
+            - **macOS Intel:** `Tunesoar_*_x64.dmg` (unsigned — right-click → Open)
+            - **Linux:** `tunesoar_*_amd64.deb` or `tunesoar_*_amd64.AppImage`
+
+            > ⚠️ macOS builds are ad-hoc signed. Right-click → Open on first launch.
+
+            See [CHANGELOG.md](./CHANGELOG.md) for full details.
+          draft: ${{ github.event_name == 'workflow_dispatch' }}
+          prerelease: false
+          files: |
+
+  # ── Step 2: Build all platforms and upload to the release ────
+  build-upload:
+    needs: create-release
     strategy:
       fail-fast: false
-      max-parallel: 1
       matrix:
         include:
           - platform: macos-latest
@@ -64,39 +102,20 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Get version
-        id: version
-        run: echo "VERSION=v$(grep -Po '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json | head -1)" >> "$GITHUB_OUTPUT"
-
-      - name: Build & release
+      - name: Build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ steps.version.outputs.VERSION }}
-          releaseName: "Tunesoar ${{ steps.version.outputs.VERSION }}"
-          releaseBody: |
-            ## Tunesoar ${{ steps.version.outputs.VERSION }}
-
-            Context-aware binaural beats for your desktop.
-
-            ### Downloads
-            - **Windows:** `Tunesoar_*_x64-setup.exe` (.msi also available)
-            - **macOS Apple Silicon (M1/M2/M3):** `Tunesoar_*_aarch64.dmg` (unsigned — right-click → Open)
-            - **macOS Intel:** `Tunesoar_*_x64.dmg` (unsigned — right-click → Open)
-            - **Linux:** `tunesoar_*_amd64.deb` or `tunesoar_*_amd64.AppImage`
-
-            > ⚠️ macOS builds are ad-hoc signed. Right-click → Open on first launch.
-
-            See [CHANGELOG.md](./CHANGELOG.md) for full details.
-          releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
-          prerelease: false
           args: ${{ matrix.args }}
+          releaseId: ${{ github.event_name == 'workflow_dispatch' && '' || '' }}
+          updaterJsonPreferNsis: true
 
+  # ── Step 3: Sync all release assets to R2 CDN ───────────────
   r2-upload:
-    needs: publish-tauri
+    needs: build-upload
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -109,12 +128,10 @@ jobs:
           R2_BUCKET: tunesoar-releases
         run: |
           set -euo pipefail
-          # Read version from tauri.conf.json (works for both tag push & manual dispatch)
           VERSION=$(grep -Po '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json | head -1)
           TAG="v$VERSION"
           echo "Version: $VERSION  Tag: $TAG"
 
-          # Get release assets
           ASSETS=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets -q '.assets[] | "\(.name)|\(.url)"')
 
           for line in $ASSETS; do
@@ -122,7 +139,6 @@ jobs:
             URL="${line##*|}"
             echo "Uploading: $NAME"
 
-            # Download from GitHub and pipe to R2
             curl -sfL -H "Authorization: Bearer $GH_TOKEN" \
                  -H "Accept: application/octet-stream" \
                  "$URL" | \
@@ -135,4 +151,3 @@ jobs:
 
           echo ""
           echo "All assets synced to R2 ✅"
-          echo "Updater: https://api.tunesoar.com/releases/updater/linux-x86_64/x86_64/0.0.0"
