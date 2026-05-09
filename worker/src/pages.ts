@@ -152,6 +152,11 @@ export const DOWNLOAD_PAGE = layout("Download", `
 })();
 </script>
 
+<div style="text-align:center;margin-top:32px;padding:20px">
+  <p style="font-size:.82rem;color:#555">Downloads are fetched live from GitHub Releases — always up to date.</p>
+  <a href="https://github.com/Donald8585/tunesoar/releases/latest" class="btn ghost" style="margin-top:8px">View on GitHub Releases</a>
+</div>
+
 `, "/downloads");
 
 // ────────────────────────────────────────────────────────────────────
