@@ -30,7 +30,7 @@ fn get_active_window_windows() -> Result<(String, String), String> {
 
     unsafe {
         let hwnd = GetForegroundWindow();
-        if hwnd.0 == 0 {
+        if hwnd.0.is_null() {
             return Err("No foreground window".to_string());
         }
 
@@ -52,7 +52,7 @@ fn get_active_window_windows() -> Result<(String, String), String> {
                 Ok(h) => {
                     let mut name_buf = vec![0u16; 260];
                     let mut name_len: u32 = name_buf.len() as u32;
-                    let ok = QueryFullProcessImageNameW(h, PROCESS_NAME_WIN32, &mut name_buf, &mut name_len);
+                    let ok = QueryFullProcessImageNameW(h, PROCESS_NAME_WIN32, &mut name_buf[..], &mut name_len);
                     let _ = windows::Win32::Foundation::CloseHandle(h);
                     if ok.is_ok() {
                         let path = String::from_utf16_lossy(&name_buf[..name_len as usize]);
