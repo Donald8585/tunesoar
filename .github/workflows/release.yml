@@ -16,13 +16,13 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
-            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
           - platform: macos-latest
-            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
           - platform: ubuntu-22.04
-            target: ''
+            args: ""
           - platform: windows-latest
-            target: ''
+            args: ""
 
     runs-on: ${{ matrix.platform }}
 
@@ -64,18 +64,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        if: matrix.target != ''
+        uses: tauri-apps/tauri-action@v0
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: pnpm tauri build --target ${{ matrix.target }}
-
-      - name: Build (native)
-        if: matrix.target == ''
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: pnpm tauri build
+        with:
+          args: ${{ matrix.args }}
 
       - name: Upload to Release
         env:
@@ -83,34 +78,25 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ github.ref_name }}"
-          IS_DRAFT="${{ github.event_name == 'workflow_dispatch' }}"
-          echo "TAG=$TAG draft=$IS_DRAFT"
 
-          # Create release if it doesn't exist
+          # Create release if it doesn't exist (first job wins, rest skip)
           if ! gh release view "$TAG" --repo "${{ github.repository }}" &>/dev/null; then
-            echo "Creating release $TAG..."
             gh release create "$TAG" \
               --repo "${{ github.repository }}" \
               --title "Tunesoar $TAG" \
               --notes "Context-aware binaural beats for your desktop." \
-              --draft="$IS_DRAFT"
+              --draft="${{ github.event_name == 'workflow_dispatch' }}"
           fi
 
-          # Upload all built bundle files
-          echo "Uploading assets..."
-          if [ -n "${{ matrix.target }}" ]; then
-            BUNDLE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle"
-          else
-            BUNDLE_DIR="src-tauri/target/release/bundle"
-          fi
-          echo "Bundle dir: $BUNDLE_DIR"
-          find "$BUNDLE_DIR" -type f \
+          # Upload all built bundle files that tauri-action produced
+          find src-tauri/target -type f \
             \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \
                -o -name '*.deb' -o -name '*.AppImage' -o -name '*.rpm' \
                -o -name '*.tar.gz' -o -name '*.sig' -o -name 'latest.json' \) \
+            -not -path '*/deps/*' -not -path '*/.fingerprint/*' -not -path '*/build/*' \
             -exec gh release upload "$TAG" --repo "${{ github.repository }}" {} --clobber \;
 
-          echo "Upload complete for ${{ matrix.target }}"
+          echo "Upload done for ${{ matrix.platform }}"
 
   r2-upload:
     needs: build-upload
@@ -128,7 +114,6 @@ jobs:
           set -euo pipefail
           VERSION=$(grep -Po '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json | head -1)
           TAG="v$VERSION"
-          echo "Version: $VERSION  Tag: $TAG"
 
           ASSETS=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets -q '.assets[] | "\(.name)|\(.url)"')
 
@@ -136,15 +121,10 @@ jobs:
             NAME="${line%%|*}"
             URL="${line##*|}"
             echo "Uploading: $NAME"
-
-            curl -sfL -H "Authorization: Bearer $GH_TOKEN" \
-                 -H "Accept: application/octet-stream" \
-                 "$URL" | \
+            curl -sfL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/octet-stream" "$URL" | \
             curl -sf -X PUT \
-                 "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/r2/buckets/$R2_BUCKET/objects/$NAME" \
-                 -H "Authorization: Bearer $CF_API_TOKEN" \
-                 --data-binary @-
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/r2/buckets/$R2_BUCKET/objects/$NAME" \
+              -H "Authorization: Bearer $CF_API_TOKEN" --data-binary @-
             echo "  OK $NAME"
           done
-
-          echo "All done"
+          echo "All synced to R2"
