@@ -66,6 +66,27 @@ fn get_active_window_windows() -> Result<(String, String), String> {
             "Unknown".to_string()
         };
 
+        // Filter out own process
+        let own = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.file_stem().map(|s| s.to_string_lossy().to_lowercase()))
+            .unwrap_or_default();
+        if app_name.to_lowercase() == own || title.to_lowercase() == own {
+            return Err("Own window is foreground".to_string());
+        }
+
+        // Filter out own process and desktop/shell windows
+        let own = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.file_stem().map(|s| s.to_string_lossy().to_lowercase()))
+            .unwrap_or_default();
+        let app_lower = app_name.to_lowercase();
+        if app_lower == own || title.to_lowercase() == own
+            || app_lower == "explorer" || title.is_empty()
+        {
+            return Err("Own or system window is foreground".to_string());
+        }
+
         Ok((title, app_name))
     }
 }
@@ -102,6 +123,15 @@ fn get_active_window_macos() -> Result<(String, String), String> {
         // Fall back to app name if unavailable
         let pid: i32 = msg_send![app, processIdentifier];
         let title = macos_window_title(pid).unwrap_or_else(|_| app_name.clone());
+
+        // Filter out own process
+        let own = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.file_stem().map(|s| s.to_string_lossy().to_lowercase()))
+            .unwrap_or_default();
+        if app_name.to_lowercase() == own {
+            return Err("Own app is frontmost".to_string());
+        }
 
         Ok((title, app_name))
     }
@@ -268,7 +298,7 @@ fn get_active_window_linux() -> Result<(String, String), String> {
     let raw = if raw_vals.len() >= 1 && raw_vals[0] != 0 {
         raw_vals[0]
     } else {
-        return Ok(("Desktop".to_string(), "Unknown".to_string()));
+        return Err("No active window (root or empty)".to_string());
     };
 
     let window = x11rb::protocol::xproto::Window::from(raw);
