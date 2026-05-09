@@ -10,58 +10,19 @@ permissions:
   contents: write
 
 jobs:
-  # ── Step 1: Create the GitHub Release first ──────────────────
-  create-release:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.VERSION }}
-      upload_url: ${{ steps.release.outputs.upload_url }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Get version
-        id: version
-        run: echo "VERSION=v$(grep -Po '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json | head -1)" >> "$GITHUB_OUTPUT"
-
-      - name: Create Release
-        id: release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.VERSION }}
-          name: "Tunesoar ${{ steps.version.outputs.VERSION }}"
-          body: |
-            ## Tunesoar ${{ steps.version.outputs.VERSION }}
-
-            Context-aware binaural beats for your desktop.
-
-            ### Downloads
-            - **Windows:** `Tunesoar_*_x64-setup.exe` (.msi also available)
-            - **macOS Apple Silicon (M1/M2/M3):** `Tunesoar_*_aarch64.dmg` (unsigned — right-click → Open)
-            - **macOS Intel:** `Tunesoar_*_x64.dmg` (unsigned — right-click → Open)
-            - **Linux:** `tunesoar_*_amd64.deb` or `tunesoar_*_amd64.AppImage`
-
-            > ⚠️ macOS builds are ad-hoc signed. Right-click → Open on first launch.
-
-            See [CHANGELOG.md](./CHANGELOG.md) for full details.
-          draft: ${{ github.event_name == 'workflow_dispatch' }}
-          prerelease: false
-          files: |
-
-  # ── Step 2: Build all platforms and upload to the release ────
   build-upload:
-    needs: create-release
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: macos-latest
-            args: --target aarch64-apple-darwin
+            target: aarch64-apple-darwin
           - platform: macos-latest
-            args: --target x86_64-apple-darwin
+            target: x86_64-apple-darwin
           - platform: ubuntu-22.04
-            args: ""
+            target: x86_64-unknown-linux-gnu
           - platform: windows-latest
-            args: ""
+            target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.platform }}
 
@@ -103,17 +64,46 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
-        uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          args: ${{ matrix.args }}
-          releaseId: ${{ github.event_name == 'workflow_dispatch' && '' || '' }}
-          updaterJsonPreferNsis: true
+        run: pnpm tauri build --target ${{ matrix.target }}
 
-  # ── Step 3: Sync all release assets to R2 CDN ───────────────
+      - name: Upload to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          VERSION=$(grep -Po '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json | head -1)
+
+          # Create release if it doesn't exist yet
+          if ! gh release view "$TAG" &>/dev/null; then
+            gh release create "$TAG" \
+              --title "Tunesoar $TAG" \
+              --notes "## Tunesoar $TAG
+
+Context-aware binaural beats for your desktop.
+
+### Downloads
+- **Windows:** \`Tunesoar_*_x64-setup.exe\` (.msi also available)
+- **macOS Apple Silicon:** \`Tunesoar_*_aarch64.dmg\`
+- **macOS Intel:** \`Tunesoar_*_x64.dmg\`
+- **Linux:** \`tunesoar_*_amd64.deb\` or \`tunesoar_*_amd64.AppImage\`
+
+> ⚠️ macOS builds are ad-hoc signed. Right-click → Open on first launch." \
+              --draft=${{ github.event_name == 'workflow_dispatch' }}
+          fi
+
+          # Find built files and upload
+          find src-tauri/target/${{ matrix.target }}/release/bundle \
+            -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \
+                     -o -name '*.deb' -o -name '*.AppImage' -o -name '*.rpm' \
+                     -o -name '*.tar.gz' -o -name '*.sig' -o -name 'latest.json' \) \
+            -exec gh release upload "$TAG" {} --clobber \;
+
+          echo "✓ Uploaded to $TAG"
+
   r2-upload:
     needs: build-upload
     runs-on: ubuntu-latest
