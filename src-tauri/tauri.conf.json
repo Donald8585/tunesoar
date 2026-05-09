@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "TuneSoar",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "identifier": "com.trancelab.tunesoar",
   "build": {
     "frontendDist": "../dist",
@@ -44,7 +44,7 @@
     "publisher": "TranceLab",
     "category": "Utility",
     "shortDescription": "Context-aware binaural beats desktop app",
-    "longDescription": "TuneSoar automatically switches binaural beat profiles based on what you're doing — coding, writing, gaming, reading, or relaxing. Features 12 context types, 5 brainwave bands, auto-pause, sleep mode, and custom mappings. Runs quietly in your system tray.",
+    "longDescription": "TuneSoar automatically switches binaural beat profiles based on what you're doing \u2014 coding, writing, gaming, reading, or relaxing. Features 12 context types, 5 brainwave bands, auto-pause, sleep mode, and custom mappings. Runs quietly in your system tray.",
     "windows": {
       "nsis": {
         "installMode": "currentUser"
@@ -58,7 +58,12 @@
     },
     "linux": {
       "deb": {
-        "depends": ["libwebkit2gtk-4.1-0", "libssl3", "libgtk-3-0", "libasound2"]
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libssl3",
+          "libgtk-3-0",
+          "libasound2"
+        ]
       }
     }
   },
