@@ -100,6 +100,36 @@ function fileName(platform:string, arch:string): string|null {
   return m[`${platform}-${arch}`]??null;
 }
 
+// ── Server-rendered Download Page ──
+
+async function renderDownloadPage(releases: R2Bucket): Promise<string> {
+  try {
+    const latestObj = await releases.get('latest.json');
+    let version = '0.1.0';
+    
+    if (latestObj) {
+      const latest = JSON.parse(await latestObj.text()) as any;
+      version = (latest.version || '0.1.0');
+    }
+    
+    const list = await releases.list();
+    let assets = '';
+    for (const obj of list.objects) {
+      const name = obj.key;
+      if (name === 'latest.json' || name.endsWith('.sig')) continue;
+      const url = 'https://tunesoar.com/releases/download/' + encodeURIComponent(name);
+      const mb = (obj.size / 1024 / 1024).toFixed(1);
+      assets += '<a href="' + url + '" class="btn" style="display:flex;justify-content:space-between;width:100%;margin-bottom:8px;text-align:left"><span style="font-size:.85rem;font-family:monospace">' + name + '</span><span style="font-size:.75rem;color:#555">' + mb + ' MB</span></a>';
+    }
+    
+    if (!assets) throw new Error('No assets');
+    
+    return '<div style="padding:80px 0 40px;text-align:center"><h1>Download TuneSoar v' + version + '</h1><p>All downloads served via Cloudflare CDN.</p></div><div class="card" style="max-width:600px;margin:0 auto"><h3>Downloads</h3>' + assets + '<p style="margin-top:16px;font-size:.78rem;color:#555">macOS builds are ad-hoc signed. Right-click Open on first launch.</p></div><div style="margin-top:48px;text-align:center"><h2>One-liner install</h2><pre style="text-align:left;max-width:560px;margin:0 auto 12px">curl -fsSL https://tunesoar.com/install.sh | bash</pre><p style="font-size:.78rem">or on Windows PowerShell:</p><pre style="text-align:left;max-width:560px;margin:0 auto">irm https://tunesoar.com/install.ps1 | iex</pre></div><div style="text-align:center;margin-top:32px"><a href="https://github.com/Donald8585/tunesoar/releases/latest" class="btn ghost">View on GitHub Releases</a></div>';
+  } catch (e: any) {
+    return '<div style="padding:80px 0 40px;text-align:center"><h1>Download TuneSoar</h1><p>Unable to load releases. Try again shortly.</p><a href="https://github.com/Donald8585/tunesoar/releases/latest" class="btn primary" style="margin-top:16px">View on GitHub Releases</a></div>';
+  }
+}
+
 function contentType(fn:string): string {
   if(fn.endsWith(".exe")) return "application/vnd.microsoft.portable-executable";
   if(fn.endsWith(".msi")) return "application/x-msi";
@@ -169,7 +199,10 @@ app.get("/account", (c) => new Response(ACCOUNT_PAGE, { headers: { "Content-Type
 app.get("/privacy", (c) => new Response(PRIVACY_PAGE, { headers: { "Content-Type": "text/html; charset=utf-8" } }));
 app.get("/terms", (c) => new Response(TERMS_PAGE, { headers: { "Content-Type": "text/html; charset=utf-8" } }));
 app.get("/safety", (c) => new Response(SAFETY_PAGE, { headers: { "Content-Type": "text/html; charset=utf-8" } }));
-app.get("/downloads", (c) => new Response(DOWNLOAD_PAGE, { headers: { "Content-Type": "text/html; charset=utf-8" } }));
+app.get("/downloads", async(c) => {
+  const body = await renderDownloadPage(c.env.RELEASES);
+  return new Response(body, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+});
 
 // ── Install Scripts ──
 
