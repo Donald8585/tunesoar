@@ -20,9 +20,9 @@ jobs:
           - platform: macos-latest
             target: x86_64-apple-darwin
           - platform: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
+            target: ''
           - platform: windows-latest
-            target: x86_64-pc-windows-msvc
+            target: ''
 
     runs-on: ${{ matrix.platform }}
 
@@ -64,10 +64,18 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build
+        if: matrix.target != ''
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --target ${{ matrix.target }}
+
+      - name: Build (native)
+        if: matrix.target == ''
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: pnpm tauri build
 
       - name: Upload to Release
         env:
@@ -90,7 +98,12 @@ jobs:
 
           # Upload all built bundle files
           echo "Uploading assets..."
-          BUNDLE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle"
+          if [ -n "${{ matrix.target }}" ]; then
+            BUNDLE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle"
+          else
+            BUNDLE_DIR="src-tauri/target/release/bundle"
+          fi
+          echo "Bundle dir: $BUNDLE_DIR"
           find "$BUNDLE_DIR" -type f \
             \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \
                -o -name '*.deb' -o -name '*.AppImage' -o -name '*.rpm' \
