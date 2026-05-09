@@ -94,7 +94,7 @@ export const HOME_PAGE = layout("Context-Aware Binaural Beats", `
 export const DOWNLOAD_PAGE = layout("Download", `
 <div style="padding:80px 0 40px;text-align:center">
 <h1>Download TuneSoar</h1>
-<p>Choose your platform below. All versions auto-update.<br><span style="font-size:.78rem;color:#555">Downloads served via Cloudflare CDN ⚡</span></p>
+<p>All installers + one-liner commands. Pick your platform.</p>
 </div>
 
 <div id="dl-root" style="margin-top:32px">
@@ -105,133 +105,64 @@ export const DOWNLOAD_PAGE = layout("Download", `
 
 <script>
 (function(){
-  var CDN = "https://tunesoar.com/releases/download";
+  var REPO = "Donald8585/tunesoar";
   var root = document.getElementById("dl-root");
-
-  // Asset catalog — serves as fallback + sizes
-  var CATALOG = {
-    windows: [
-      {name:"TuneSoar_0.1.0_x64-setup.exe",label:"Windows Installer (.exe)",size:2.4},
-      {name:"TuneSoar_0.1.0_x64_en-US.msi",label:"Windows MSI",size:3.3}
-    ],
-    mac: [
-      {name:"TuneSoar_0.1.0_aarch64.dmg",label:"macOS Apple Silicon (.dmg)",size:3.5},
-      {name:"TuneSoar_0.1.0_x64.dmg",label:"macOS Intel (.dmg)",size:3.7}
-    ],
-    linux: [
-      {name:"TuneSoar_0.1.0_amd64.deb",label:"Linux .deb",size:3.6},
-      {name:"TuneSoar_0.1.0_amd64.AppImage",label:"Linux AppImage",size:79.6},
-      {name:"TuneSoar-0.1.0-1.x86_64.rpm",label:"Linux .rpm",size:3.6}
-    ]
-  };
-
-  function detectOS() {
-    var ua = navigator.userAgent;
-    if (/Mac/i.test(ua)) {
-      try { return navigator.userAgentData.platform && /arm|aarch64/i.test(navigator.userAgentData.platform) ? "mac-arm" : "mac-intel"; }
-      catch(e) { return "mac-intel"; }
-    }
-    if (/Windows/i.test(ua)) return "windows";
-    if (/Linux/i.test(ua) || /X11/i.test(ua)) return "linux";
-    return "unknown";
-  }
-
-  var osLabels = {
-    "mac-arm": "Download for Mac (Apple Silicon)",
-    "mac-intel": "Download for Mac (Intel)",
-    "windows": "Download for Windows",
-    "linux": "Download for Linux",
-    "unknown": "View all downloads"
-  };
-
-  var os = detectOS();
-
-  // Try to fetch latest version from updater API
-  fetch("https://api.tunesoar.com/releases/updater/windows-x86_64/x86_64/0.0.0")
-    .then(function(r) { return r.json(); })
-    .then(function(manifest) {
-      var tag = (manifest.version||"0.1.0");
-      var html = "";
-
-      // Pick best download for detected OS
-      var primaryFile = null;
-      if (os === "windows") primaryFile = CATALOG.windows[0];
-      else if (os === "mac-intel") primaryFile = CATALOG.mac[1];
-      else if (os === "mac-arm") primaryFile = CATALOG.mac[0];
-      else if (os === "linux") primaryFile = CATALOG.linux[0];
-
-      if (primaryFile) {
-        html += '<div style="text-align:center;margin-bottom:48px">';
-        html += '<a href="'+CDN+'/'+primaryFile.name+'" class="btn primary" style="font-size:1.1rem;padding:14px 32px">';
-        html += '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ';
-        html += osLabels[os] + " — " + tag;
-        html += '</a>';
-        html += '<p style="margin-top:8px;font-size:.82rem;color:#555">' + primaryFile.size.toFixed(1) + ' MB · Served via Cloudflare CDN ⚡</p>';
-        html += '</div>';
+  var ua = navigator.userAgent;
+  var os = "unknown";
+  if (/Mac/i.test(ua)) {
+    try { os = navigator.userAgentData.platform && /arm|aarch64/i.test(navigator.userAgentData.platform) ? "mac-arm" : "mac-intel"; }
+    catch(e) { os = "mac-intel"; }
+  } else if (/Windows/i.test(ua)) os = "windows";
+  else if (/Linux/i.test(ua)) os = "linux";
+  var labels = {"mac-arm":"Download for Mac (Apple Silicon)","mac-intel":"Download for Mac (Intel)","windows":"Download for Windows","linux":"Download for Linux","unknown":"View all downloads"};
+  fetch("https://api.github.com/repos/"+REPO+"/releases/latest")
+    .then(function(r){return r.json();})
+    .then(function(release){
+      var tag = (release.tag_name||"v0.1.0").replace(/^v/,"");
+      var groups = {"macOS":[],"Windows":[],"Linux":[]};
+      release.assets.forEach(function(a){
+        if (/\.dmg$/.test(a.name)) groups["macOS"].push(a);
+        else if (/\.(exe|msi)$/i.test(a.name)) groups["Windows"].push(a);
+        else if (/\.(deb|AppImage)$/i.test(a.name)) groups["Linux"].push(a);
+      });
+      var primary = null;
+      var find = function(re){for(var i=0;i<release.assets.length;i++)if(re.test(release.assets[i].name))return release.assets[i];return null;};
+      switch(os){
+        case"mac-arm":primary=find(/aarch64.*\.dmg$/)||find(/\.dmg$/);break;
+        case"mac-intel":primary=find(/x64.*\.dmg$/)||find(/\.dmg$/);break;
+        case"windows":primary=find(/-setup\.exe$/)||find(/\.msi$/);break;
+        case"linux":primary=find(/\.AppImage$/)||find(/\.deb$/);break;
       }
-
-      // All platforms grid
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">';
-      var groups = {"🪟 Windows":CATALOG.windows,"🍎 macOS":CATALOG.mac,"🐧 Linux":CATALOG.linux};
-      Object.keys(groups).forEach(function(label) {
-        html += '<div class="card"><h3>'+label+'</h3>';
-        groups[label].forEach(function(a) {
-          html += '<a href="'+CDN+'/'+a.name+'" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:8px;text-decoration:none;color:#c4c4d4;border:1px solid #1a1a2a;margin-bottom:8px;transition:all .15s" onmouseover="this.style.borderColor=\'#4747ff\';this.style.color=\'#fff\'" onmouseout="this.style.borderColor=\'#1a1a2a\';this.style.color=\'#c4c4d4\'">';
-          html += '<span style="font-size:.85rem;font-family:monospace">'+a.label+'</span>';
-          html += '<span style="font-size:.75rem;color:#555">'+a.size.toFixed(1)+' MB</span>';
-          html += '</a>';
+      var h="";
+      if(primary){h+='<div style="text-align:center;margin-bottom:48px"><a href="'+primary.browser_download_url+'" class="btn primary" style="font-size:1.1rem;padding:14px 32px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> '+labels[os]+' — v'+tag+'</a><p style="margin-top:8px;font-size:.82rem;color:#555">'+(primary.size/1024/1024).toFixed(1)+' MB · Auto-updates included</p></div>';}
+      h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">';
+      Object.keys(groups).forEach(function(platform){
+        h+='<div class="card"><h3>'+platform+'</h3>';
+        groups[platform].forEach(function(a){
+          h+='<a href="'+a.browser_download_url+'" style="display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:8px;text-decoration:none;color:#c4c4d4;border:1px solid #1a1a2a;margin-bottom:8px;transition:all .15s" onmouseover="this.style.borderColor=\'#4747ff\';this.style.color=\'#fff\'" onmouseout="this.style.borderColor=\'#1a1a2a\';this.style.color=\'#c4c4d4\'"><span style="font-size:.85rem;font-family:monospace">'+a.name+'</span><span style="font-size:.75rem;color:#555">'+(a.size/1024/1024).toFixed(1)+' MB</span></a>';
         });
-        html += '</div>';
+        h+='</div>';
       });
-      html += '</div>';
-
-      // One-liner installers
-      html += '<div style="margin-top:48px;text-align:center">';
-      html += '<h2>One-liner install</h2>';
-      html += '<p style="margin-bottom:24px">Paste into your terminal:</p>';
-      html += '<pre style="text-align:left;max-width:560px;margin:0 auto 12px">curl -fsSL https://tunesoar.com/install.sh | bash</pre>';
-      html += '<p style="font-size:.78rem">or on Windows PowerShell:</p>';
-      html += '<pre style="text-align:left;max-width:560px;margin:0 auto">irm https://tunesoar.com/install.ps1 | iex</pre>';
-      html += '</div>';
-
-      root.innerHTML = html;
-    })
-    .catch(function() {
-      // Fallback: show static links
-      var html = '<div style="text-align:center;margin-bottom:48px"><a href="'+CDN+'/TuneSoar_0.1.0_x64-setup.exe" class="btn primary" style="font-size:1.1rem;padding:14px 32px">Download for Windows</a></div>';
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px">';
-      var groups = {"🪟 Windows":CATALOG.windows,"🍎 macOS":CATALOG.mac,"🐧 Linux":CATALOG.linux};
-      Object.keys(groups).forEach(function(label) {
-        html += '<div class="card"><h3>'+label+'</h3>';
-        groups[label].forEach(function(a) {
-          html += '<a href="'+CDN+'/'+a.name+'" class="btn" style="width:100%;text-align:left;margin-bottom:8px">'+a.label+' · '+a.size.toFixed(1)+' MB</a>';
-        });
-        html += '</div>';
-      });
-      html += '</div>';
-      root.innerHTML = html;
+      h+='</div>';
+      h+='<div style="margin-top:48px;text-align:center"><h2>One-liner install</h2><p style="margin-bottom:24px">Paste into your terminal:</p><pre style="text-align:left;max-width:560px;margin:0 auto 12px">curl -fsSL https://tunesoar.com/install.sh | bash</pre><p style="font-size:.78rem">or on Windows PowerShell:</p><pre style="text-align:left;max-width:560px;margin:0 auto">irm https://tunesoar.com/install.ps1 | iex</pre></div>';
+      root.innerHTML=h;
+    }).catch(function(){
+      root.innerHTML='<div style="text-align:center;padding:48px"><p>Unable to load release data.</p><a href="https://github.com/'+REPO+'/releases/latest" class="btn primary" style="margin-top:16px">View on GitHub Releases</a></div>';
     });
 })();
 </script>
 
-<div style="text-align:center;margin-top:32px;padding:24px;background:#12121a;border:1px solid #2a2a3a;border-radius:12px;max-width:720px;margin-left:auto;margin-right:auto">
+<div style="text-align:center;margin-top:32px;padding:24px;background:#12121a;border:1px solid #2a2a3a;border-radius:12px;max-width:600px;margin-left:auto;margin-right:auto">
   <h3 style="margin-top:0">Direct Downloads — v0.1.0</h3>
-  <div style="display:flex;flex-direction:column;gap:8px;text-align:left">
-    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_x64-setup.exe" class="btn" style="display:flex;justify-content:space-between"><span>🪟 Windows Installer</span><span style="color:#555">2.4 MB</span></a>
-    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_x64_en-US.msi" class="btn" style="display:flex;justify-content:space-between"><span>🪟 Windows MSI</span><span style="color:#555">3.3 MB</span></a>
-    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_aarch64.dmg" class="btn" style="display:flex;justify-content:space-between"><span>🍎 macOS Apple Silicon</span><span style="color:#555">3.5 MB</span></a>
-    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_x64.dmg" class="btn" style="display:flex;justify-content:space-between"><span>🍎 macOS Intel</span><span style="color:#555">3.7 MB</span></a>
-    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_amd64.deb" class="btn" style="display:flex;justify-content:space-between"><span>🐧 Linux .deb</span><span style="color:#555">3.6 MB</span></a>
-    <a href="https://tunesoar.com/releases/download/TuneSoar_0.1.0_amd64.AppImage" class="btn" style="display:flex;justify-content:space-between"><span>🐧 Linux AppImage</span><span style="color:#555">79.6 MB</span></a>
+  <div style="display:flex;flex-direction:column;gap:10px;text-align:left">
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_x64-setup.exe" class="btn" style="display:flex;justify-content:space-between"><span>🪟 Windows Installer</span><span style="color:#555">2.4 MB</span></a>
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_x64_en-US.msi" class="btn" style="display:flex;justify-content:space-between"><span>🪟 Windows MSI</span><span style="color:#555">3.3 MB</span></a>
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_aarch64.dmg" class="btn" style="display:flex;justify-content:space-between"><span>🍎 macOS (Apple Silicon M1/M2/M3)</span><span style="color:#555">3.5 MB</span></a>
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_x64.dmg" class="btn" style="display:flex;justify-content:space-between"><span>🍎 macOS (Intel)</span><span style="color:#555">3.7 MB</span></a>
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_amd64.deb" class="btn" style="display:flex;justify-content:space-between"><span>🐧 Linux .deb</span><span style="color:#555">3.6 MB</span></a>
+    <a href="https://github.com/Donald8585/tunesoar/releases/download/v0.1.0/TuneSoar_0.1.0_amd64.AppImage" class="btn" style="display:flex;justify-content:space-between"><span>🐧 Linux AppImage</span><span style="color:#555">79.6 MB</span></a>
   </div>
   <p style="margin-top:16px;font-size:.78rem;color:#555">⚠️ macOS builds are ad-hoc signed — Right-click → Open on first launch</p>
-</div>
-
-<div style="text-align:center;margin-top:24px;padding:20px;background:#0d0d18;border:1px solid #1a1a2a;border-radius:12px;max-width:720px;margin-left:auto;margin-right:auto">
-  <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 18px;border-radius:20px;background:#052e16;border:1px solid #166534;margin-bottom:6px">
-    <span style="font-size:.9rem;color:#22c55e">✓ Verified Clean — Scanii</span>
-  </div>
-  <p style="font-size:.75rem;color:#555">All 9 binaries scanned · 0 threats detected · <a href="https://scanii.com" target="_blank" rel="noopener" style="color:#8b5cf6">scanii.com</a></p>
 </div>
 
 `, "/downloads");
