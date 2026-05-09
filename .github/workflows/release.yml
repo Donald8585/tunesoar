@@ -75,34 +75,29 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${{ github.ref_name }}"
-          VERSION=$(grep -Po '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json | head -1)
+          IS_DRAFT="${{ github.event_name == 'workflow_dispatch' }}"
+          echo "TAG=$TAG draft=$IS_DRAFT"
 
-          # Create release if it doesn't exist yet
-          if ! gh release view "$TAG" &>/dev/null; then
+          # Create release if it doesn't exist
+          if ! gh release view "$TAG" --repo "${{ github.repository }}" &>/dev/null; then
+            echo "Creating release $TAG..."
             gh release create "$TAG" \
+              --repo "${{ github.repository }}" \
               --title "Tunesoar $TAG" \
-              --notes "## Tunesoar $TAG
-
-Context-aware binaural beats for your desktop.
-
-### Downloads
-- **Windows:** \`Tunesoar_*_x64-setup.exe\` (.msi also available)
-- **macOS Apple Silicon:** \`Tunesoar_*_aarch64.dmg\`
-- **macOS Intel:** \`Tunesoar_*_x64.dmg\`
-- **Linux:** \`tunesoar_*_amd64.deb\` or \`tunesoar_*_amd64.AppImage\`
-
-> ⚠️ macOS builds are ad-hoc signed. Right-click → Open on first launch." \
-              --draft=${{ github.event_name == 'workflow_dispatch' }}
+              --notes "Context-aware binaural beats for your desktop." \
+              --draft="$IS_DRAFT"
           fi
 
-          # Find built files and upload
-          find src-tauri/target/${{ matrix.target }}/release/bundle \
-            -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \
-                     -o -name '*.deb' -o -name '*.AppImage' -o -name '*.rpm' \
-                     -o -name '*.tar.gz' -o -name '*.sig' -o -name 'latest.json' \) \
-            -exec gh release upload "$TAG" {} --clobber \;
+          # Upload all built bundle files
+          echo "Uploading assets..."
+          BUNDLE_DIR="src-tauri/target/${{ matrix.target }}/release/bundle"
+          find "$BUNDLE_DIR" -type f \
+            \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \
+               -o -name '*.deb' -o -name '*.AppImage' -o -name '*.rpm' \
+               -o -name '*.tar.gz' -o -name '*.sig' -o -name 'latest.json' \) \
+            -exec gh release upload "$TAG" --repo "${{ github.repository }}" {} --clobber \;
 
-          echo "✓ Uploaded to $TAG"
+          echo "Upload complete for ${{ matrix.target }}"
 
   r2-upload:
     needs: build-upload
@@ -136,8 +131,7 @@ Context-aware binaural beats for your desktop.
                  "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/r2/buckets/$R2_BUCKET/objects/$NAME" \
                  -H "Authorization: Bearer $CF_API_TOKEN" \
                  --data-binary @-
-            echo "  ✓ $NAME"
+            echo "  OK $NAME"
           done
 
-          echo ""
-          echo "All assets synced to R2 ✅"
+          echo "All done"
