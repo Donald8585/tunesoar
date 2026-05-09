@@ -66,15 +66,6 @@ fn get_active_window_windows() -> Result<(String, String), String> {
             "Unknown".to_string()
         };
 
-        // Filter out own process
-        let own = std::env::current_exe()
-            .ok()
-            .and_then(|p| p.file_stem().map(|s| s.to_string_lossy().to_lowercase()))
-            .unwrap_or_default();
-        if app_name.to_lowercase() == own || title.to_lowercase() == own {
-            return Err("Own window is foreground".to_string());
-        }
-
         // Filter out own process and desktop/shell windows
         let own = std::env::current_exe()
             .ok()
