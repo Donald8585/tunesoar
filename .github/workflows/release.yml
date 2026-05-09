@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  build-upload:
+  publish-tauri:
     strategy:
       fail-fast: false
       matrix:
@@ -63,43 +63,29 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
+      - name: Get version
+        id: version
+        run: echo "VERSION=v$(grep -Po '\"version\":\s*\"\K[^\"]+' src-tauri/tauri.conf.json | head -1)" >> "$GITHUB_OUTPUT"
+
+      - name: Build & release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Tunesoar ${{ github.ref_name }}"
+          releaseBody: |
+            ## Tunesoar ${{ github.ref_name }}
+            Context-aware binaural beats for your desktop.
+            See [CHANGELOG.md](./CHANGELOG.md) for full details.
+          releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
+          prerelease: false
           args: ${{ matrix.args }}
 
-      - name: Upload to Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          TAG="${{ github.ref_name }}"
-
-          # Create release if it doesn't exist (first job wins, rest skip)
-          if ! gh release view "$TAG" --repo "${{ github.repository }}" &>/dev/null; then
-            gh release create "$TAG" \
-              --repo "${{ github.repository }}" \
-              --title "Tunesoar $TAG" \
-              --notes "Context-aware binaural beats for your desktop." \
-              --draft="${{ github.event_name == 'workflow_dispatch' }}"
-          fi
-
-          # Upload all built bundle files that tauri-action produced
-          find src-tauri/target -type f \
-            \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \
-               -o -name '*.deb' -o -name '*.AppImage' -o -name '*.rpm' \
-               -o -name '*.tar.gz' -o -name '*.sig' -o -name 'latest.json' \) \
-            -not -path '*/deps/*' -not -path '*/.fingerprint/*' -not -path '*/build/*' \
-            -exec gh release upload "$TAG" --repo "${{ github.repository }}" {} --clobber \;
-
-          echo "Upload done for ${{ matrix.platform }}"
-
   r2-upload:
-    needs: build-upload
+    needs: publish-tauri
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -114,6 +100,7 @@ jobs:
           set -euo pipefail
           VERSION=$(grep -Po '"version":\s*"\K[^"]+' src-tauri/tauri.conf.json | head -1)
           TAG="v$VERSION"
+          echo "Version: $VERSION  Tag: $TAG"
 
           ASSETS=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets -q '.assets[] | "\(.name)|\(.url)"')
 
@@ -121,10 +108,16 @@ jobs:
             NAME="${line%%|*}"
             URL="${line##*|}"
             echo "Uploading: $NAME"
-            curl -sfL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/octet-stream" "$URL" | \
+
+            curl -sfL -H "Authorization: Bearer $GH_TOKEN" \
+                 -H "Accept: application/octet-stream" \
+                 "$URL" | \
             curl -sf -X PUT \
-              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/r2/buckets/$R2_BUCKET/objects/$NAME" \
-              -H "Authorization: Bearer $CF_API_TOKEN" --data-binary @-
-            echo "  OK $NAME"
+                 "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/r2/buckets/$R2_BUCKET/objects/$NAME" \
+                 -H "Authorization: Bearer $CF_API_TOKEN" \
+                 --data-binary @-
+            echo "  ✓ $NAME"
           done
-          echo "All synced to R2"
+
+          echo ""
+          echo "All assets synced to R2 ✅"
