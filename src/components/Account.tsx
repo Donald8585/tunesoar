@@ -1,8 +1,10 @@
 import { SignIn, SignUp, UserButton, useAuth, useUser } from "@clerk/react";
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-shell";
 import { ArrowLeft, Key, Shield, ExternalLink } from "lucide-react";
 import { addToast } from "./ErrorToast";
+import { Button } from "./ui/button";
 
 interface Props {
   onBack: () => void;
@@ -14,6 +16,7 @@ export function Account({ onBack }: Props) {
   const [showSignUp, setShowSignUp] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [licenseInfo, setLicenseInfo] = useState<any>(null);
+  const [clerkTimeout, setClerkTimeout] = useState(false);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -22,6 +25,9 @@ export function Account({ onBack }: Props) {
         addToast('tunesoar:auth', String(e), 'error');
       });
     }
+    // Fallback: if Clerk doesn't load in 5 seconds, show browser redirect
+    const t = setTimeout(() => setClerkTimeout(true), 5000);
+    return () => clearTimeout(t);
   }, [isSignedIn]);
 
   return (
@@ -37,7 +43,15 @@ export function Account({ onBack }: Props) {
         {!isSignedIn ? (
           <div className="text-center py-4">
             <p className="text-sm text-text-secondary mb-4">Sign in to manage your license and subscription.</p>
-            {showSignUp ? (
+            {clerkTimeout && (
+              <div className="space-y-2 mb-4">
+                <p className="text-xs text-amber-400">Clerk didn't load in the app window.</p>
+                <Button variant="primary" className="w-full" onClick={() => open("https://tunesoar.com/account")}>
+                  Open in Browser <ExternalLink className="w-3.5 h-3.5 ml-1" />
+                </Button>
+              </div>
+            )}
+            {!clerkTimeout && (showSignUp ? (
               <>
                 <SignUp signInUrl="/account" />
                 <p className="text-xs text-text-secondary mt-3">
@@ -53,7 +67,7 @@ export function Account({ onBack }: Props) {
                   <button onClick={() => setShowSignUp(true)} className="text-trance-400 hover:underline">Sign up</button>
                 </p>
               </>
-            )}
+            ))}
           </div>
         ) : (
           <div className="space-y-4">
