@@ -178,37 +178,47 @@ export const PRICING_PAGE = layout("Pricing", `
 <h1>Pricing</h1>
 <p>Simple, transparent pricing for TuneSoar.</p>
 </div>
-<div class="pricing-grid" style="max-width:720px;margin:0 auto">
+<div class="pricing-grid" style="max-width:800px;margin:0 auto">
+<!-- Free -->
 <div class="pricing-card">
 <div class="price">Free</div>
 <div class="period">forever</div>
 <ul>
-<li>All binaural beat profiles</li>
-<li>Auto context detection</li>
-<li>System tray mode</li>
-<li>Basic support</li>
+<li>5 context types (Coding, Writing, Gaming, Creative, Ambient)</li>
+<li>3 beat profiles (Alpha, Beta, Theta)</li>
+<li>Default context mappings</li>
+<li>System tray controls</li>
+<li>Basic volume control</li>
+<li>Active window detection</li>
+<li>Offline mode</li>
 </ul>
 <a href="/downloads" class="btn" style="width:100%;text-align:center;justify-content:center">Get Started</a>
 </div>
+<!-- Monthly -->
 <div class="pricing-card featured">
-<div class="price">$4.99</div>
+<div class="price">$6.99</div>
 <div class="period">/ month</div>
 <ul>
-<li>Everything in Free</li>
-<li>Custom beat profiles</li>
-<li>Priority support</li>
-<li>Early access features</li>
+<li>All 12 context types</li>
+<li>All 5 beat profiles (Delta, Theta, Alpha, Beta, Gamma)</li>
+<li>Unlimited custom context mappings</li>
+<li>Sleep mode (22:00–06:00 auto Delta)</li>
+<li>Priority audio engine</li>
+<li>Advanced statistics &amp; insights</li>
+<li>Telemetry &amp; usage dashboard</li>
 </ul>
 <a href="/account" class="btn primary" style="width:100%;text-align:center;justify-content:center">Subscribe</a>
 </div>
+<!-- Lifetime -->
 <div class="pricing-card">
-<div class="price">$49</div>
-<div class="period">lifetime</div>
+<div class="price">$89</div>
+<div class="period">one-time</div>
 <ul>
 <li>Everything in Monthly</li>
-<li>Lifetime access</li>
-<li>All future updates</li>
+<li>Lifetime access — pay once</li>
+<li>All future updates included</li>
 <li>Vote on roadmap</li>
+<li>30-day money-back guarantee</li>
 </ul>
 <a href="/account" class="btn" style="width:100%;text-align:center;justify-content:center">Buy Once</a>
 </div>
