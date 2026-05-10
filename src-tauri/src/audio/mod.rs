@@ -201,8 +201,10 @@ pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext, li
     };
 
     if let Some(ref mut engine) = *engine_guard {
+        eprintln!("[tunesoar:audio] Updating existing engine: {:?} at {} Hz", beat_type, freq);
         engine.set_profile(profile.clone());
     } else {
+        eprintln!("[tunesoar:audio] Creating new engine: {:?} at {} Hz", beat_type, freq);
         match BinauralEngine::new(profile.clone()) {
             Ok(engine) => {
                 *state.error_message.lock().unwrap() = None;

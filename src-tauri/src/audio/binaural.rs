@@ -4,15 +4,6 @@ use std::f32::consts::PI;
 
 use super::{BeatProfile};
 
-// Write to stderr so errors are visible in production (no RUST_LOG needed)
-macro_rules! audio_log {
-    ($($arg:tt)*) => {
-        let msg = format!($($arg)*);
-        eprintln!("[tunesoar:audio] {}", msg);
-        log::info!("[tunesoar:audio] {}", msg);
-    };
-}
-
 /// Core binaural beat generator using pure DSP sine waves
 pub struct BinauralEngine {
     stream: Option<cpal::Stream>,
@@ -28,18 +19,21 @@ pub struct BinauralEngine {
 impl BinauralEngine {
     /// Create a new binaural beat engine and start streaming
     pub fn new(profile: BeatProfile) -> Result<Self, String> {
+        eprintln!("[tunesoar:audio] BinauralEngine::new called");
         let host = cpal::default_host();
+        eprintln!("[tunesoar:audio] host={:?}", host.id());
         let device = host
             .default_output_device()
             .ok_or("No output device found")?;
 
-        audio_log!("Device: {:?}", device.name().unwrap_or_default());
+        eprintln!("[tunesoar:audio] device={:?}", device.name());
         let config = device
             .default_output_config()
             .map_err(|e| format!("Failed to get default config: {}", e))?;
 
         let sample_rate = config.sample_rate().0 as f32;
         let channels = config.channels() as usize;
+        eprintln!("[tunesoar:audio] stream config: {} Hz, {} channels", sample_rate, channels);
 
         let profile = Arc::new(Mutex::new(profile));
         let volume = Arc::new(Mutex::new(profile.lock().unwrap().volume));
@@ -72,16 +66,17 @@ impl BinauralEngine {
                     );
                 },
                 |err| {
+                    eprintln!("[tunesoar:audio] Stream error: {}", err);
                     log::error!("[tunesoar:audio] Stream error: {}", err);
                 },
                 None,
             )
             .map_err(|e| format!("Failed to build stream: {}", e))?;
 
+        eprintln!("[tunesoar:audio] stream built ok");
         stream.play().map_err(|e| format!("Failed to play: {}", e))?;
 
-        audio_log!("Stream started: {} Hz, {} ch, vol={:.3}",
-            sample_rate, channels, profile.lock().unwrap().volume);
+        eprintln!("[tunesoar:audio] stream.play() called, vol={:.3}", profile.lock().unwrap().volume);
 
         Ok(Self {
             stream: Some(stream),
