@@ -75,7 +75,10 @@ export function layout(title: string, body: string, currentPage = ""): string {
     ${navLink("/", "Home")}
     ${navLink("/downloads", "Downloads")}
     ${navLink("/pricing", "Pricing")}
-    ${navLink("/account", "Account")}
+    <span id="clerk-nav-auth">
+      <button onclick="window.Clerk?.openSignIn()" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px">Sign In</button>
+      <button onclick="window.Clerk?.openSignUp()" class="btn primary" style="padding:6px 14px;font-size:.82rem;margin-left:4px">Sign Up</button>
+    </span>
   </div>
 </nav>
 <main>${body}</main>
@@ -87,6 +90,34 @@ export function layout(title: string, body: string, currentPage = ""): string {
   <br><span style="color:#555">Bug reports / feature requests: <a href="mailto:alfredso@wealthmakermasterclass.com" style="color:#8b5cf6">alfredso@wealthmakermasterclass.com</a></span>
   <br>© Wealth Maker Masterclass Limited
 </footer>
+<script>
+(function(){
+  function updateNav() {
+    var el = document.getElementById('clerk-nav-auth');
+    if (!el) return;
+    if (window.Clerk && window.Clerk.user) {
+      var user = window.Clerk.user;
+      var name = user.fullName || (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress) || 'Account';
+      el.innerHTML = '<a href="/account" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px">' + name + '</a>';
+    }
+  }
+  if (window.Clerk) {
+    window.Clerk.addListener(updateNav);
+  } else {
+    var attempts = 0;
+    var interval = setInterval(function() {
+      attempts++;
+      if (window.Clerk && window.Clerk.user !== undefined) {
+        clearInterval(interval);
+        updateNav();
+        window.Clerk.addListener(updateNav);
+      } else if (attempts > 50) {
+        clearInterval(interval);
+      }
+    }, 200);
+  }
+})();
+</script>
 </body>
 </html>`;
 }
