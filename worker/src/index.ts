@@ -3,8 +3,8 @@ import { cors } from "hono/cors";
 import { verifyToken } from "@clerk/backend";
 import Stripe from "stripe";
 import {
-  HOME_PAGE, DOWNLOAD_PAGE, PRICING_PAGE, ACCOUNT_PAGE,
-  PRIVACY_PAGE, TERMS_PAGE, SAFETY_PAGE,
+  HOME_PAGE, PRICING_PAGE, ACCOUNT_PAGE,
+  PRIVACY_PAGE, TERMS_PAGE, SAFETY_PAGE, layout,
 } from "./pages";
 
 interface Env {
@@ -90,14 +90,27 @@ app.post("/deactivate", async(c) => {
 
 // ── Release CDN (R2-backed) ──
 
-function fileName(platform:string, arch:string): string|null {
-  const m:Record<string,string>={
-    "windows-x64":"TuneSoar_0.1.0_x64-setup.exe",
-    "macos-x64":"TuneSoar_0.1.0_x64.dmg",
-    "macos-arm64":"TuneSoar_0.1.0_aarch64.dmg",
-    "linux-x64":"TuneSoar_0.1.0_amd64.AppImage",
+async function fileName(releases: R2Bucket, platform:string, arch:string): Promise<string|null> {
+  // Dynamically look up the latest asset for this platform/arch from R2
+  const latestObj = await releases.get('latest.json');
+  if (!latestObj) return null;
+  const latest = JSON.parse(await latestObj.text()) as any;
+  const version = (latest.version || '0.1.2').replace(/^v/, '');
+
+  const patterns: Record<string, RegExp> = {
+    'windows-x64': new RegExp(`_${version.replace(/\./g, '\\.')}.*-setup\\.exe$`, 'i'),
+    'macos-x64': new RegExp(`_${version.replace(/\./g, '\\.')}_x64\\.dmg$`, 'i'),
+    'macos-arm64': new RegExp(`_${version.replace(/\./g, '\\.')}_aarch64\\.dmg$`, 'i'),
+    'linux-x64': new RegExp(`_${version.replace(/\./g, '\\.')}.*\\.AppImage$`, 'i'),
   };
-  return m[`${platform}-${arch}`]??null;
+  const pat = patterns[`${platform}-${arch}`];
+  if (!pat) return null;
+
+  const list = await releases.list();
+  for (const obj of list.objects) {
+    if (pat.test(obj.key)) return obj.key;
+  }
+  return null;
 }
 
 // ── Server-rendered Download Page ──
@@ -105,28 +118,82 @@ function fileName(platform:string, arch:string): string|null {
 async function renderDownloadPage(releases: R2Bucket): Promise<string> {
   try {
     const latestObj = await releases.get('latest.json');
-    let version = '0.1.0';
-    
+    let version = '0.1.1';
     if (latestObj) {
       const latest = JSON.parse(await latestObj.text()) as any;
-      version = (latest.version || '0.1.0');
+      version = (latest.version || '0.1.1');
     }
-    
+
     const list = await releases.list();
-    let assets = '';
+    const groups: Record<string, string[]> = { 'macOS': [], 'Windows': [], 'Linux': [], 'Other': [] };
+
+    // Build a regex to match only the latest version's files
+    const verClean = version.replace(/^v/, '');
+    const verPattern = new RegExp(`[_\-]${verClean.replace(/\./g, '\\.')}[_\-.]`);
+
     for (const obj of list.objects) {
       const name = obj.key;
+      // Skip manifest, sigs, and files that don't match the current version
       if (name === 'latest.json' || name.endsWith('.sig')) continue;
+      if (!verPattern.test(name) && !name.includes('.app.tar.gz')) continue;
+      // For .app.tar.gz files (no version in name), only include if no versioned dmg exists
+      if (name.endsWith('.app.tar.gz')) {
+        const base = name.replace(/\.app\.tar\.gz$/, '');
+        // Check if there's a versioned dmg for this arch — if so, skip the tar.gz
+        const hasDmg = list.objects.some(o => o.key !== name && o.key.includes(base) && o.key.endsWith('.dmg'));
+        if (hasDmg) continue;
+      }
       const url = 'https://tunesoar.com/releases/download/' + encodeURIComponent(name);
       const mb = (obj.size / 1024 / 1024).toFixed(1);
-      assets += '<a href="' + url + '" class="btn" style="display:flex;justify-content:space-between;width:100%;margin-bottom:8px;text-align:left"><span style="font-size:.85rem;font-family:monospace">' + name + '</span><span style="font-size:.75rem;color:#555">' + mb + ' MB</span></a>';
+      const item = '<a href="' + url + '" class="dl-item"><span class="dl-name">' + name + '</span><span class="dl-size">' + mb + ' MB</span></a>';
+
+      if (/\.dmg$|\.app\.tar\.gz$/.test(name)) groups['macOS'].push(item);
+      else if (/\.exe$|\.msi$/i.test(name)) groups['Windows'].push(item);
+      else if (/\.deb$|\.AppImage$|\.rpm$/i.test(name)) groups['Linux'].push(item);
+      else groups['Other'].push(item);
     }
-    
-    if (!assets) throw new Error('No assets');
-    
-    return '<div style="padding:80px 0 40px;text-align:center"><h1>Download TuneSoar v' + version + '</h1><p>All downloads served via Cloudflare CDN.</p></div><div class="card" style="max-width:600px;margin:0 auto"><h3>Downloads</h3>' + assets + '<p style="margin-top:16px;font-size:.78rem;color:#555">macOS builds are ad-hoc signed. Right-click Open on first launch.</p></div><div style="margin-top:48px;text-align:center"><h2>One-liner install</h2><pre style="text-align:left;max-width:560px;margin:0 auto 12px">curl -fsSL https://tunesoar.com/install.sh | bash</pre><p style="font-size:.78rem">or on Windows PowerShell:</p><pre style="text-align:left;max-width:560px;margin:0 auto">irm https://tunesoar.com/install.ps1 | iex</pre></div><div style="text-align:center;margin-top:32px"><a href="https://github.com/Donald8585/tunesoar/releases/latest" class="btn ghost">View on GitHub Releases</a></div>';
+
+    let cardsHtml = '<div class="dl-grid">';
+    const labels: Record<string,string> = { 'macOS': '🍎 macOS', 'Windows': '🪟 Windows', 'Linux': '🐧 Linux', 'Other': '📦 Other' };
+    for (const [os, items] of Object.entries(groups)) {
+      if (items.length === 0) continue;
+      cardsHtml += '<div class="card"><h3>' + labels[os] + '</h3>' + items.join('') + '</div>';
+    }
+    cardsHtml += '</div>';
+
+    const body = `
+<div class="hero">
+<h1>Download TuneSoar v${version}</h1>
+<p>All downloads served via Cloudflare CDN.</p>
+</div>
+${cardsHtml}
+<p class="dl-note">macOS builds are ad-hoc signed. Right-click Open on first launch.</p>
+<div class="install-section">
+<h2>One-liner install</h2>
+<p>Paste into your terminal:</p>
+<div class="code-block">
+<pre><code>curl -fsSL https://tunesoar.com/install.sh | bash</code></pre>
+<button class="btn ghost btn-copy" onclick="copyCode(this,'curl -fsSL https://tunesoar.com/install.sh | bash')">📋 Copy</button>
+</div>
+<p style="font-size:.78rem;margin:12px 0 8px">or on Windows PowerShell:</p>
+<div class="code-block">
+<pre><code>irm https://tunesoar.com/install.ps1 | iex</code></pre>
+<button class="btn ghost btn-copy" onclick="copyCode(this,'irm https://tunesoar.com/install.ps1 | iex')">📋 Copy</button>
+</div>
+</div>
+<p style="text-align:center;margin-top:32px"><a href="https://github.com/Donald8585/tunesoar/releases/latest" class="btn ghost">View on GitHub Releases</a></p>
+<script>
+function copyCode(btn,text){navigator.clipboard.writeText(text).then(function(){btn.textContent='✓ Copied!';setTimeout(function(){btn.textContent='📋 Copy'},2000)}).catch(function(){btn.textContent='⚠ Failed';setTimeout(function(){btn.textContent='📋 Copy'},2000)})}
+<\/script>`;
+
+    return layout("Download", body, "/downloads");
   } catch (e: any) {
-    return '<div style="padding:80px 0 40px;text-align:center"><h1>Download TuneSoar</h1><p>Unable to load releases. Try again shortly.</p><a href="https://github.com/Donald8585/tunesoar/releases/latest" class="btn primary" style="margin-top:16px">View on GitHub Releases</a></div>';
+    return layout("Download", `
+<div class="hero">
+<h1>Download TuneSoar</h1>
+<p>Unable to load releases. Try again shortly.</p>
+<a href="https://github.com/Donald8585/tunesoar/releases/latest" class="btn primary" style="margin-top:16px">View on GitHub Releases</a>
+</div>`, "/downloads");
   }
 }
 
@@ -155,7 +222,7 @@ app.get("/releases/download/:filename", async(c) => {
 
 app.get("/releases/latest/:platform/:arch", async(c) => {
   const platform=c.req.param("platform"), arch=c.req.param("arch");
-  const fn=fileName(platform,arch);
+  const fn=await fileName(c.env.RELEASES, platform, arch);
   if(!fn) return Response.json({error:"Unsupported platform",platform,arch},{status:404});
   const obj=await c.env.RELEASES.get(fn);
   if(!obj) return Response.json({error:"Asset not found"},{status:404});
