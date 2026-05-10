@@ -36,6 +36,7 @@ export interface CurrentStatus {
   auto_detect_enabled: boolean;
   manual_override: string | null;
   audio_error: string | null;
+  is_pro: boolean;
 }
 
 export interface UserPrefs {

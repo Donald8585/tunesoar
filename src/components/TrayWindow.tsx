@@ -145,6 +145,20 @@ export function TrayWindow() {
         </div>
       )}
 
+      {/* Free tier upgrade prompt */}
+      {status && !status.is_pro && (
+        <div className="pb-3">
+          <div className="rounded-lg bg-trance-600/10 border border-trance-600/20 p-2.5">
+            <p className="text-[11px] text-trance-300">
+              🆓 Free tier — 5 contexts, 3 beat types.{" "}
+              <a href="/upgrade" className="underline hover:text-trance-200" onClick={(e) => { e.preventDefault(); window.location.hash = "#/upgrade"; }}>
+                Upgrade to Pro ↗
+              </a>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Current Context Card */}
       <div className="pb-4 pt-1">
         <div className="rounded-xl bg-surface-light border border-surface-lighter p-4">

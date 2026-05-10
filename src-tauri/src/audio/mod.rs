@@ -3,6 +3,7 @@ pub mod binaural;
 use binaural::BinauralEngine;
 use std::sync::{Arc, Mutex};
 use tauri::State;
+use crate::license::LicenseState;
 
 /// Global audio engine state shared across the app
 pub struct AudioState {
@@ -138,12 +139,31 @@ pub struct DetectedContext {
 unsafe impl Send for AudioState {}
 unsafe impl Sync for AudioState {}
 
-/// Update the active beat profile based on context
-pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext) {
+/// Update the active beat profile based on context, enforcing license tier
+pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext, license: &LicenseState) {
     let mut engine_guard = state.engine.lock().unwrap();
     let mut profile_guard = state.current_profile.lock().unwrap();
 
-    let freq = context.context_type.default_beat_freq();
+    let is_pro = license.can_use("unlimited_contexts");
+
+    // ── Tier enforcement: redirect Pro-only contexts to Ambient for free users ──
+    let effective_ctx = if !is_pro {
+        match context.context_type {
+            // Free tier (5 contexts): Coding, Writing, Creative, Gaming, Ambient
+            ContextType::PassiveWatch | ContextType::Communication
+            | ContextType::Meeting | ContextType::Relaxation
+            | ContextType::Music | ContextType::Idle
+            | ContextType::SleepPrep => {
+                log::info!("[tunesoar:audio] Free tier: context {:?} → Ambient", context.context_type);
+                ContextType::Ambient
+            }
+            other => other,
+        }
+    } else {
+        context.context_type
+    };
+
+    let freq = effective_ctx.default_beat_freq();
 
     if freq <= 0.0 {
         // Auto-pause or fade out
@@ -154,12 +174,29 @@ pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext) {
         return;
     }
 
+    let mut beat_type = effective_ctx.default_beat();
+
+    // ── Tier enforcement: block Delta and Gamma bands for free users ──
+    if !is_pro {
+        match beat_type {
+            BeatType::Delta => {
+                log::info!("[tunesoar:audio] Free tier: Delta → Alpha");
+                beat_type = BeatType::Alpha;
+            }
+            BeatType::Gamma => {
+                log::info!("[tunesoar:audio] Free tier: Gamma → Beta");
+                beat_type = BeatType::Beta;
+            }
+            _ => {}
+        }
+    }
+
     // Use carrier frequency from AudioState (default 200 Hz, configurable via Settings)
     let carrier = *state.carrier_frequency.lock().unwrap();
 
     let profile = BeatProfile {
-        beat_type: context.context_type.default_beat(),
-        beat_frequency: freq,
+        beat_type,
+        beat_frequency: if freq > 0.0 { freq } else { beat_type.default_frequency() },
         carrier_frequency: carrier,
         volume: *state.volume.lock().unwrap(),
     };
@@ -173,7 +210,7 @@ pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext) {
                 *engine_guard = Some(engine);
             }
             Err(e) => {
-                log::error!("Failed to create audio engine: {}", e);
+                log::error!("[tunesoar:audio] Failed to create audio engine: {}", e);
                 *state.error_message.lock().unwrap() = Some(format!("Audio engine: {}", e));
             }
         }

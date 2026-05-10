@@ -26,6 +26,7 @@ pub struct CurrentStatus {
     pub auto_detect_enabled: bool,
     pub manual_override: Option<String>,
     pub audio_error: Option<String>,
+    pub is_pro: bool,
 }
 
 /// Get current playback status and detected context
@@ -33,6 +34,7 @@ pub struct CurrentStatus {
 pub fn get_status(
     audio: State<AudioState>,
     context: State<ContextState>,
+    license: State<LicenseState>,
 ) -> Result<CurrentStatus, String> {
     let current_ctx = context.detector.lock().unwrap()
         .current_context.lock().unwrap().clone();
@@ -67,6 +69,7 @@ pub fn get_status(
         is_playing,
         is_paused,
         audio_error: *audio.error_message.lock().unwrap().clone(),
+        is_pro: license.can_use("unlimited_contexts"),
     })
 }
 
@@ -126,6 +129,7 @@ pub fn toggle_playback(audio: State<AudioState>) -> Result<bool, String> {
 pub fn detect_context(
     audio: State<AudioState>,
     context: State<ContextState>,
+    license: State<LicenseState>,
 ) -> Result<DetectedContext, String> {
     let detector = context.detector.lock().unwrap();
     let browser_url = context.browser_url.lock().unwrap().clone();
@@ -147,14 +151,12 @@ pub fn detect_context(
             context_type: ContextType::Idle,
             ..detected
         };
-        update_beat_for_context(&audio, &idle_ctx);
+        update_beat_for_context(&audio, &idle_ctx, &license);
         return Ok(idle_ctx);
     }
 
     detector.mark_active();
     update_beat_for_context(&audio, &detected);
-
-    // Store current context
     *detector.current_context.lock().unwrap() = Some(detected.clone());
 
     Ok(detected)
@@ -163,7 +165,7 @@ pub fn detect_context(
 // ─── Manual Override ─────────────────────────────────────
 
 #[tauri::command]
-pub fn set_manual_override(context_type: String, audio: State<AudioState>, context: State<ContextState>) -> Result<String, String> {
+pub fn set_manual_override(context_type: String, audio: State<AudioState>, context: State<ContextState>, license: State<LicenseState>) -> Result<String, String> {
     let detector = context.detector.lock().unwrap();
     if context_type.is_empty() || context_type.eq_ignore_ascii_case("auto") {
         detector.enable_auto_detect();
@@ -190,7 +192,7 @@ pub fn set_manual_override(context_type: String, audio: State<AudioState>, conte
         url: None,
         detected_at: now,
     };
-    update_beat_for_context(&audio, &detected);
+    update_beat_for_context(&audio, &detected, &license);
 
     Ok(ct_str)
 }
