@@ -121,3 +121,87 @@ jobs:
 
           echo ""
           echo "All assets synced to R2 ✅"
+
+  cleanup-old-releases:
+    needs: r2-upload
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove old GitHub releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Get all non-draft releases sorted by creation date
+          RELEASES=$(gh release list --repo "${{ github.repository }}" --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[].tagName')
+          LATEST=""
+          for tag in $RELEASES; do
+            if [ -z "$LATEST" ]; then
+              LATEST="$tag"
+              echo "Keeping latest: $LATEST"
+            else
+              echo "Deleting old release: $tag"
+              gh release delete "$tag" --repo "${{ github.repository }}" --yes --cleanup-tag || true
+            fi
+          done
+          echo "Cleanup done — only $LATEST remains"
+
+      - name: Prune old R2 objects
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET: tunesoar-releases
+        run: |
+          set -euo pipefail
+          # List all R2 objects sorted by upload time, keep only the newest set
+          echo "Listing R2 objects..."
+          OBJECTS=$(curl -sf \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/r2/buckets/$R2_BUCKET/objects" \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+objects = data.get('result', {}).get('objects', [])
+# Group by platform prefix (macOS/Windows/Linux .dmg/.exe/.msi/.deb/.AppImage)
+# Keep only the most recent version per platform
+from collections import defaultdict
+groups = defaultdict(list)
+for o in objects:
+    key = o['key']
+    # Extract platform: x86_64-apple-darwin, aarch64-apple-darwin, x64-setup, x64_en-US
+    parts = key.rsplit('_', 1)
+    prefix = parts[0] if len(parts) > 1 else key
+    groups[prefix].append((o['uploaded'], key))
+
+# Sort each group by upload time descending, mark all but the newest for deletion
+keys_to_delete = []
+for prefix, items in groups.items():
+    items.sort(reverse=True)
+    for _, key in items[1:]:
+        keys_to_delete.append(key)
+
+# Also group by extension (simple approach)
+ext_groups = defaultdict(list)
+for o in objects:
+    key = o['key']
+    ext = key.rsplit('.', 1)[-1] if '.' in key else key
+    ext_groups[ext].append((o['uploaded'], key))
+
+for ext, items in ext_groups.items():
+    items.sort(reverse=True)
+    for _, key in items[1:]:
+        if key not in keys_to_delete:
+            keys_to_delete.append(key)
+
+for k in keys_to_delete:
+    print(k)
+")
+
+          for key in $OBJECTS; do
+            echo "Deleting R2 object: $key"
+            curl -sf -X DELETE \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/r2/buckets/$R2_BUCKET/objects/$key" \
+              -H "Authorization: Bearer $CF_API_TOKEN" \
+              > /dev/null
+            echo "  ✓ deleted"
+          done
+          echo "R2 cleanup done ✅"
