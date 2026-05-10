@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::State;
 use tauri::Emitter;
+use chrono::Utc;
 
 // ─── Tauri Commands ────────────────────────────────────────────
 
@@ -145,6 +146,21 @@ pub fn detect_context(
     };
 
     let detected = detector.detect(&window_title, &app_name, browser_url.as_deref());
+
+    // Check if manual override is active — if so, don't auto-detect
+    let manual = detector.manual_override.lock().unwrap().clone();
+    if let Some(override_ctx) = manual {
+        let detected = DetectedContext {
+            context_type: override_ctx,
+            app_name: "Manual Override".to_string(),
+            window_title: String::new(),
+            url: None,
+            detected_at: Utc::now().timestamp_millis(),
+        };
+        update_beat_for_context(&audio, &detected, &license);
+        *detector.current_context.lock().unwrap() = Some(detected.clone());
+        return Ok(detected);
+    }
 
     // Check idle
     if detector.is_idle() {

@@ -17,8 +17,8 @@ export function Upgrade({ onBack }: Props) {
     try {
       // Open Stripe checkout in browser
       const checkoutUrl = plan === "monthly"
-        ? "https://trancelab.ai/tunesoar/checkout/monthly"
-        : "https://trancelab.ai/tunesoar/checkout/lifetime";
+        ? "https://tunesoar.com/pricing"
+        : "https://tunesoar.com/pricing";
       await open(checkoutUrl);
     } catch (e) {
       console.error('[tunesoar:billing]', e);
