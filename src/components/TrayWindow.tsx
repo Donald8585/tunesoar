@@ -145,7 +145,6 @@ export function TrayWindow() {
   }, [status?.audio_error]);
 
   // ── Session timer: track continuous play and alert on break ──
-  const [sessionWarning, setSessionWarning] = useState(false);
   useEffect(() => {
     if (!isPlaying) return;
     const check = async () => {
@@ -154,9 +153,6 @@ export function TrayWindow() {
         const info = await invoke<{ session_active: boolean; elapsed_seconds: number; remaining_seconds: number; break_required: boolean }>("tick_session");
         if (info.break_required) {
           addToast("tunesoar:audio", "Break required — 90 min session limit reached. Please take a 10-min break.", "warning");
-          setSessionWarning(true);
-        } else if (info.remaining_seconds < 600 && info.remaining_seconds > 0) {
-          setSessionWarning(true);
         }
       } catch { /* ignore */ }
     };
