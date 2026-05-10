@@ -2,7 +2,6 @@ pub mod binaural;
 
 use binaural::BinauralEngine;
 use std::sync::{Arc, Mutex};
-use tauri::State;
 use crate::license::LicenseState;
 
 /// Global audio engine state shared across the app

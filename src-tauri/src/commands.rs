@@ -69,7 +69,7 @@ pub fn get_status(
         carrier_frequency: *audio.carrier_frequency.lock().unwrap(),
         is_playing,
         is_paused,
-        audio_error: *audio.error_message.lock().unwrap().clone(),
+        audio_error: audio.error_message.lock().unwrap().clone(),
         is_pro: license.can_use("unlimited_contexts"),
     })
 }
@@ -157,7 +157,7 @@ pub fn detect_context(
     }
 
     detector.mark_active();
-    update_beat_for_context(&audio, &detected);
+    update_beat_for_context(&audio, &detected, &license);
     *detector.current_context.lock().unwrap() = Some(detected.clone());
 
     Ok(detected)

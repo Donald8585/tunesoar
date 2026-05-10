@@ -2,7 +2,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::sync::{Arc, Mutex};
 use std::f32::consts::PI;
 
-use super::{BeatProfile, BeatType};
+use super::{BeatProfile};
 
 /// Core binaural beat generator using pure DSP sine waves
 pub struct BinauralEngine {
