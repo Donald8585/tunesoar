@@ -63,7 +63,7 @@ pub const MAX_CONTINUOUS_PLAY_SECONDS: i64 = 90 * 60; // 90 minutes
 pub const BREAK_DURATION_SECONDS: i64 = 10 * 60; // 10 minutes
 pub const DISCOMFORT_COOLDOWN_SECONDS: i64 = 24 * 3600; // 24 hours
 pub const VOLUME_HARD_CAP: f32 = 0.25;
-pub const VOLUME_DEFAULT: f32 = 0.10;
+pub const VOLUME_DEFAULT: f32 = 0.025;
 
 /// Safety checklist items shown in Settings > Safety
 pub const SAFETY_CHECKLIST: &[&str] = &[

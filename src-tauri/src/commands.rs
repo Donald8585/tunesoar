@@ -423,6 +423,7 @@ pub fn get_session_info(
 /// Tick the session timer — called periodically by frontend while playing
 #[tauri::command]
 pub fn tick_session(
+    app: tauri::AppHandle,
     audio: State<AudioState>,
     safety: State<SafetyState>,
 ) -> Result<SessionInfo, String> {
@@ -435,6 +436,7 @@ pub fn tick_session(
 
         if *secs >= gate::MAX_CONTINUOUS_PLAY_SECONDS {
             *safety.break_required.lock().unwrap() = true;
+            let _ = app.emit("break-required", ());
         }
     }
 

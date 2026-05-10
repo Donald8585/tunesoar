@@ -1,4 +1,5 @@
 use crate::audio::{ContextType, DetectedContext};
+use crate::context::defaults;
 use chrono::{Local, Timelike};
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -184,6 +185,7 @@ impl ContextDetector {
         } else {
             // Match by app name
             self.match_app(app_name)
+                .or_else(|| self.match_window_regex(window_title))
                 .or_else(|| self.match_app_fuzzy(app_name, window_title))
                 .unwrap_or_else(|| {
                     // Check time-based context (sleep prep: 10pm-6am)
@@ -228,6 +230,17 @@ impl ContextDetector {
         for (pattern, ctx) in mappings.iter() {
             let lower_pat = pattern.to_lowercase();
             if lower_app.contains(&lower_pat) || lower_title.contains(&lower_pat) {
+                return Some(*ctx);
+            }
+        }
+        None
+    }
+
+    /// Regex-based window title matching (Zoom meetings, YouTube, etc.)
+    fn match_window_regex(&self, window_title: &str) -> Option<ContextType> {
+        let rules = defaults::default_rules();
+        for (regex, ctx) in &rules {
+            if regex.is_match(window_title) {
                 return Some(*ctx);
             }
         }
