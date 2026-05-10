@@ -12,10 +12,6 @@ pub fn set_diag_log_path(path: String) {
     let _ = DIAG_LOG_PATH.set(path);
 }
 
-pub fn set_diag_log_path(path: String) {
-    let _ = DIAG_LOG_PATH.set(path);
-}
-
 pub fn diag_log(msg: &str) {
     eprintln!("[tunesoar:audio] {}", msg);
     if let Some(p) = DIAG_LOG_PATH.get() {
