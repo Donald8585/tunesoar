@@ -35,11 +35,23 @@ pre{background:#12121a;border:1px solid #2a2a3a;border-radius:10px;padding:16px;
 .footer{text-align:center;padding:32px 24px;font-size:.78rem;color:#555;border-top:1px solid #1a1a2a;max-width:960px;margin:0 auto}
 .footer a{color:#555;text-decoration:none;margin:0 8px}
 .footer a:hover{color:#8a8a9a}
+.hero{text-align:center;padding:80px 0 40px}
+.dl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:24px 0}
+.dl-item{display:flex;justify-content:space-between;align-items:center;padding:12px;border-radius:8px;text-decoration:none;color:#c4c4d4;border:1px solid #1a1a2a;margin-bottom:8px;transition:all .15s}
+.dl-item:hover{border-color:#4747ff;color:#fff}
+.dl-name{font-size:.85rem;font-family:monospace}
+.dl-size{font-size:.75rem;color:#555;flex-shrink:0;margin-left:12px}
+.dl-note{text-align:center;font-size:.78rem;color:#555;margin-bottom:16px}
+.install-section{text-align:center;margin-top:48px}
+.code-block{position:relative;max-width:560px;margin:8px auto;background:#12121a;border:1px solid #2a2a3a;border-radius:10px}
+.code-block pre{margin:0;border:none;background:transparent}
+.code-block code{background:transparent;border:none;padding:0}
+.btn-copy{position:absolute;top:8px;right:8px;font-size:.78rem;padding:4px 10px;border-radius:6px}
 `;
 
 const NAV_LOGO = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width:28px;height:auto"><defs><linearGradient id="nl" x1="0" y1="12" x2="24" y2="12" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#60a5fa"/></linearGradient></defs><rect x="2" y="8" width="2" height="8" rx="1" fill="url(#nl)" opacity=".6"/><rect x="5.5" y="5.5" width="2" height="13" rx="1" fill="url(#nl)" opacity=".8"/><rect x="9" y="3" width="2" height="18" rx="1" fill="url(#nl)"/><circle cx="13" cy="12" r="4.5" fill="url(#nl)"/><circle cx="13" cy="12" r="2" fill="#fff" opacity=".85"/><rect x="19" y="3" width="2" height="18" rx="1" fill="url(#nl)"/><rect x="22.5" y="5.5" width="2" height="13" rx="1" fill="url(#nl)" opacity=".8"/></svg>`;
 
-function layout(title: string, body: string, currentPage = ""): string {
+export function layout(title: string, body: string, currentPage = ""): string {
   const navLink = (href: string, label: string) =>
     `<a href="${href}"${currentPage === href ? ' class="active"' : ""}>${label}</a>`;
   return `<!doctype html>
@@ -118,7 +130,7 @@ export const DOWNLOAD_PAGE = layout("Download", `
   fetch("https://api.github.com/repos/"+REPO+"/releases/latest")
     .then(function(r){return r.json();})
     .then(function(release){
-      var tag = (release.tag_name||"v0.1.0").replace(/^v/,"");
+      var tag = (release.tag_name||"v0.1.2").replace(/^v/,"");
       var groups = {"macOS":[],"Windows":[],"Linux":[]};
       release.assets.forEach(function(a){
         if (/\.dmg$/.test(a.name)) groups["macOS"].push(a);
@@ -153,7 +165,7 @@ export const DOWNLOAD_PAGE = layout("Download", `
 </script>
 
 <div style="text-align:center;margin-top:32px;padding:20px">
-  <p style="font-size:.82rem;color:#555">Downloads are fetched live from GitHub Releases — always up to date.</p>
+  <p style="font-size:.82rem;color:#555">Downloads served via Cloudflare CDN from R2. Always up to date.</p>
   <a href="https://github.com/Donald8585/tunesoar/releases/latest" class="btn ghost" style="margin-top:8px">View on GitHub Releases</a>
 </div>
 

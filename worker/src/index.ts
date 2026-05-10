@@ -118,10 +118,10 @@ async function fileName(releases: R2Bucket, platform:string, arch:string): Promi
 async function renderDownloadPage(releases: R2Bucket): Promise<string> {
   try {
     const latestObj = await releases.get('latest.json');
-    let version = '0.1.1';
+    let version = '0.1.2';
     if (latestObj) {
       const latest = JSON.parse(await latestObj.text()) as any;
-      version = (latest.version || '0.1.1');
+      version = (latest.version || '0.1.2');
     }
 
     const list = await releases.list();
