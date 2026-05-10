@@ -4,7 +4,9 @@ import type { UserPrefs } from "../types";
 import { APP_NAME, CARRIER_FREQ_MIN, CARRIER_FREQ_MAX } from "../lib/constants";
 import { Slider } from "./ui/slider";
 import { Switch } from "./ui/switch";
-import { ArrowLeft, Save, Shield } from "lucide-react";
+import { Button } from "./ui/button";
+import { ArrowLeft, Save, Shield, Brain } from "lucide-react";
+import { addToast } from "./ErrorToast";
 
 interface Props {
   onBack: () => void;
@@ -13,9 +15,18 @@ interface Props {
 export function Settings({ onBack }: Props) {
   const [prefs, setPrefs] = useState<UserPrefs | null>(null);
   const [saved, setSaved] = useState(false);
+  const [isPro, setIsPro] = useState(false);
+  const [gammaEnabled, setGammaEnabled] = useState(false);
+  const [gammaConfirming, setGammaConfirming] = useState(false);
 
   useEffect(() => {
     invoke<UserPrefs>("get_prefs").then(setPrefs).catch(console.error);
+    // Load Pro status
+    invoke<{ is_pro: boolean }>("get_status").then(s => setIsPro(s.is_pro)).catch(() => {});
+    // Load Gamma state
+    invoke<{ gamma_enabled: boolean }>("get_safety_status")
+      .then(s => setGammaEnabled(s.gamma_enabled))
+      .catch(() => {});
   }, []);
 
   const update = async (key: string, value: string) => {
@@ -93,6 +104,53 @@ export function Settings({ onBack }: Props) {
           <div className="space-y-3">
             <Switch checked={prefs.telemetry_opt_in} onChange={(v) => update("telemetry_opt_in", v.toString())}
               label="Usage Telemetry" description="Opt-in anonymous usage data helps us improve TuneSoar" />
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Advanced</h3>
+          <div className="space-y-3">
+            {isPro && (
+              <div className="rounded-lg bg-surface-light border border-surface-lighter p-3">
+                <div className="flex items-start gap-2">
+                  <Brain className="w-4 h-4 text-trance-400 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-text-primary">Gamma Band (30–40 Hz)</p>
+                    <p className="text-[10px] text-text-secondary mt-0.5">
+                      High cognition, peak awareness. Use with caution — may cause discomfort.
+                    </p>
+                    {gammaConfirming ? (
+                      <div className="mt-2 space-y-2">
+                        <p className="text-[10px] text-amber-400">⚠️ Gamma frequencies may cause headaches or anxiety. Confirm you understand the risks.</p>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="primary" onClick={async () => {
+                            try {
+                              await invoke("confirm_gamma_warning");
+                              await invoke("enable_gamma");
+                              setGammaEnabled(true);
+                              setGammaConfirming(false);
+                              addToast("tunesoar:audio", "Gamma band enabled — use with caution", "warning");
+                            } catch (e) {
+                              addToast("tunesoar:audio", String(e), "error");
+                            }
+                          }}>I Understand — Enable Gamma</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setGammaConfirming(false)}>Cancel</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Switch checked={gammaEnabled} onChange={(v) => {
+                        if (v && !gammaEnabled) setGammaConfirming(true);
+                      }} label="Enable Gamma Band" description="30–40 Hz — high cognition, peak awareness" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            {!isPro && (
+              <p className="text-xs text-text-secondary italic">
+                Upgrade to Pro for Gamma band and advanced features.
+              </p>
+            )}
           </div>
         </section>
 

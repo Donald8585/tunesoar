@@ -4,6 +4,7 @@ import type { ContextMapping, ContextType, BeatType } from "../types";
 import { CONTEXT_LABELS, BEAT_PROFILES } from "../types";
 import { Button } from "./ui/button";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { addToast } from "./ErrorToast";
 
 interface Props {
   onBack: () => void;
@@ -50,7 +51,8 @@ export function ContextMappings({ onBack }: Props) {
       setShowAdd(false);
       fetchMappings();
     } catch (e) {
-      console.error("Failed to add mapping:", e);
+      console.error('[tunesoar:billing] Failed to add mapping:', e);
+      addToast('tunesoar:billing', String(e), 'error');
     }
   };
 
@@ -59,7 +61,8 @@ export function ContextMappings({ onBack }: Props) {
       await invoke("delete_mapping", { id });
       fetchMappings();
     } catch (e) {
-      console.error("Failed to delete mapping:", e);
+      console.error('[tunesoar:billing] Failed to delete mapping:', e);
+      addToast('tunesoar:billing', String(e), 'error');
     }
   };
 

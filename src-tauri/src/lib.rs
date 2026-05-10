@@ -114,6 +114,7 @@ pub fn run() {
             commands::enable_gamma,
             commands::confirm_gamma_warning,
             commands::get_session_info,
+            commands::tick_session,
             commands::verify_license,
             commands::get_license_info,
             commands::set_license_key,

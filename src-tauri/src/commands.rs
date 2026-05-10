@@ -221,15 +221,21 @@ pub fn get_mappings(storage: State<StorageState>) -> Result<Vec<ContextMapping>,
     storage.db.lock().unwrap().get_mappings()
 }
 
-/// Upsert a context mapping
+/// Upsert a context mapping (Pro only)
 #[tauri::command]
-pub fn save_mapping(mapping: ContextMapping, storage: State<StorageState>) -> Result<(), String> {
+pub fn save_mapping(mapping: ContextMapping, storage: State<StorageState>, license: State<LicenseState>) -> Result<(), String> {
+    if !license.can_use("custom_mappings") {
+        return Err("Custom mappings require Pro. Upgrade at Settings → Pro ↗".to_string());
+    }
     storage.db.lock().unwrap().upsert_mapping(&mapping)
 }
 
-/// Delete a context mapping
+/// Delete a context mapping (Pro only)
 #[tauri::command]
-pub fn delete_mapping(id: i64, storage: State<StorageState>) -> Result<(), String> {
+pub fn delete_mapping(id: i64, storage: State<StorageState>, license: State<LicenseState>) -> Result<(), String> {
+    if !license.can_use("custom_mappings") {
+        return Err("Custom mappings require Pro. Upgrade at Settings → Pro ↗".to_string());
+    }
     storage.db.lock().unwrap().delete_mapping(id)
 }
 
@@ -412,6 +418,27 @@ pub fn get_session_info(
         remaining_seconds: (gate::MAX_CONTINUOUS_PLAY_SECONDS - play_secs).max(0),
         break_required,
     })
+}
+
+/// Tick the session timer — called periodically by frontend while playing
+#[tauri::command]
+pub fn tick_session(
+    audio: State<AudioState>,
+    safety: State<SafetyState>,
+) -> Result<SessionInfo, String> {
+    let is_playing = *audio.is_playing.lock().unwrap();
+    let is_paused = *audio.is_paused.lock().unwrap();
+
+    if is_playing && !is_paused {
+        let mut secs = safety.continuous_play_seconds.lock().unwrap();
+        *secs += 30; // frontend calls every 30s
+
+        if *secs >= gate::MAX_CONTINUOUS_PLAY_SECONDS {
+            *safety.break_required.lock().unwrap() = true;
+        }
+    }
+
+    get_session_info(safety)
 }
 
 // ─── License Commands ─────────────────────────────────────────

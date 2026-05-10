@@ -189,12 +189,14 @@ impl ContextDetector {
                     // Check time-based context (sleep prep: 10pm-6am)
                     let hour = Local::now().hour();
                     if hour >= 22 || hour < 6 {
-                        // During sleep hours, check for reading/research apps
+                        // During sleep hours, bias towards SleepPrep for most apps
+                        let lower_app = app_name.to_lowercase();
                         let lower_title = window_title.to_lowercase();
-                        if lower_title.contains("kindle") || lower_title.contains("reader")
-                            || lower_title.contains("books") || lower_title.contains("pocket")
-                            || lower_title.contains("instapaper")
-                        {
+                        // Active/coding/gaming apps override sleep mode
+                        let is_active = lower_app.contains("terminal") || lower_app.contains("code")
+                            || lower_title.contains("github") || lower_title.contains("pull request")
+                            || lower_app.contains("steam") || lower_app.contains("game");
+                        if !is_active {
                             return ContextType::SleepPrep;
                         }
                     }
