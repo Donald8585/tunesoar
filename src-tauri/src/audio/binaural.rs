@@ -14,6 +14,7 @@ pub struct BinauralEngine {
     sample_rate: f32,
     phase_l: Arc<Mutex<f32>>,
     phase_r: Arc<Mutex<f32>>,
+    sample_count: Arc<Mutex<u64>>,
 }
 
 impl BinauralEngine {
@@ -41,6 +42,7 @@ impl BinauralEngine {
         let fade_active = Arc::new(Mutex::new(false));
         let phase_l = Arc::new(Mutex::new(0.0f32));
         let phase_r = Arc::new(Mutex::new(0.0f32));
+        let sample_count = Arc::new(Mutex::new(0u64));
 
         let p_clone = profile.clone();
         let v_clone = volume.clone();
@@ -48,6 +50,7 @@ impl BinauralEngine {
         let fa_clone = fade_active.clone();
         let pl_clone = phase_l.clone();
         let pr_clone = phase_r.clone();
+        let sc_clone = sample_count.clone();
 
         let stream = device
             .build_output_stream(
@@ -63,6 +66,7 @@ impl BinauralEngine {
                         &fa_clone,
                         &pl_clone,
                         &pr_clone,
+                        &sc_clone,
                     );
                 },
                 |err| {
@@ -87,6 +91,7 @@ impl BinauralEngine {
             sample_rate,
             phase_l,
             phase_r,
+            sample_count,
         })
     }
 
@@ -101,6 +106,7 @@ impl BinauralEngine {
         fade_active: &Arc<Mutex<bool>>,
         phase_l: &Arc<Mutex<f32>>,
         phase_r: &Arc<Mutex<f32>>,
+        sample_count: &Arc<Mutex<u64>>,
     ) {
         let p = profile.lock().unwrap();
         let mut vol = volume.lock().unwrap();
@@ -155,6 +161,16 @@ impl BinauralEngine {
             }
 
             *pr = (*pr + increment_r) % (2.0 * PI);
+        }
+
+        // Log peak sample every ~1 second for diagnostics
+        let mut sc = sample_count.lock().unwrap();
+        let prev = *sc;
+        *sc += data.len() as u64;
+        let rate = sample_rate as u64 * channels as u64;
+        if prev / rate != *sc / rate {
+            let peak = data.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
+            eprintln!("[tunesoar:audio] callback peak={:.4} vol={:.3}", peak, effective_vol);
         }
     }
 
