@@ -129,7 +129,7 @@ async function renderDownloadPage(releases: R2Bucket): Promise<string> {
 
     // Build a regex to match only the latest version's files
     const verClean = version.replace(/^v/, '');
-    const verPattern = new RegExp(`[_\-]${verClean.replace(/\./g, '\\.')}[_\-.]`);
+    const verPattern = new RegExp(`[-_]${verClean.replace(/\./g, '\\.')}[-_.]`);
 
     for (const obj of list.objects) {
       const name = obj.key;
@@ -188,10 +188,12 @@ function copyCode(btn,text){navigator.clipboard.writeText(text).then(function(){
 
     return layout("Download", body, "/downloads");
   } catch (e: any) {
+    console.error('renderDownloadPage error:', e?.message || e, e?.stack || '');
     return layout("Download", `
 <div class="hero">
 <h1>Download TuneSoar</h1>
 <p>Unable to load releases. Try again shortly.</p>
+<p style="font-size:10px;color:#555">Error: ${String(e?.message || e).replace(/</g,'&lt;')}</p>
 <a href="https://github.com/Donald8585/tunesoar/releases/latest" class="btn primary" style="margin-top:16px">View on GitHub Releases</a>
 </div>`, "/downloads");
   }
