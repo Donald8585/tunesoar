@@ -62,7 +62,7 @@ export function layout(title: string, body: string, currentPage = ""): string {
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjOGI1Y2Y2Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzNiODJmNiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPCEtLSBObyBiYWNrZ3JvdW5kIOKAlCBqdXN0IHRoZSBpY29uIC0tPgogIDxyZWN0IHg9IjE4IiB5PSI0NiIgd2lkdGg9IjgiIGhlaWdodD0iMzYiIHJ4PSI0IiBmaWxsPSJ1cmwoI2cpIiBvcGFjaXR5PSIuNyIvPgogIDxyZWN0IHg9IjMyIiB5PSIzMiIgd2lkdGg9IjgiIGhlaWdodD0iNjQiIHJ4PSI0IiBmaWxsPSJ1cmwoI2cpIi8+CiAgPHJlY3QgeD0iNDYiIHk9IjIyIiB3aWR0aD0iOCIgaGVpZ2h0PSI4NCIgcng9IjQiIGZpbGw9InVybCgjZykiLz4KICA8Y2lyY2xlIGN4PSI3MiIgY3k9IjY0IiByPSIyNiIgZmlsbD0idXJsKCNnKSIvPgogIDxjaXJjbGUgY3g9IjcyIiBjeT0iNjQiIHI9IjExIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIuOTUiLz4KICA8cmVjdCB4PSIxMDQiIHk9IjIyIiB3aWR0aD0iOCIgaGVpZ2h0PSI4NCIgcng9IjQiIGZpbGw9InVybCgjZykiLz4KICA8cmVjdCB4PSIxMTgiIHk9IjMyIiB3aWR0aD0iOCIgaGVpZ2h0PSI2NCIgcng9IjQiIGZpbGw9InVybCgjZykiIG9wYWNpdHk9Ii43Ii8+Cjwvc3ZnPgo="/>
 <title>${title} — TuneSoar</title>
 <style>${LAYOUT_CSS}</style>
-<script async crossorigin src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.js"
+<script async crossorigin src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"
   data-clerk-publishable-key="pk_live_Y2xlcmsudHVuZXNvYXIuY29tJA"
   data-clerk-sign-in-url="/account"
   data-clerk-sign-up-url="/account">
@@ -75,8 +75,8 @@ export function layout(title: string, body: string, currentPage = ""): string {
     ${navLink("/", "Home")}
     ${navLink("/downloads", "Downloads")}
     ${navLink("/pricing", "Pricing")}
-    <a href="/account" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px">Sign In</a>
-    <a href="/account" class="btn primary" style="padding:6px 14px;font-size:.82rem;margin-left:4px">Sign Up</a>
+    <a href="/account" id="nav-signin" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px">Sign In</a>
+    <a href="/account" id="nav-signup" class="btn primary" style="padding:6px 14px;font-size:.82rem;margin-left:4px">Sign Up</a>
   </div>
 </nav>
 <main>${body}</main>
@@ -88,6 +88,32 @@ export function layout(title: string, body: string, currentPage = ""): string {
   <br><span style="color:#555">Bug reports / feature requests: <a href="mailto:alfredso@wealthmakermasterclass.com" style="color:#8b5cf6">alfredso@wealthmakermasterclass.com</a></span>
   <br>© Wealth Maker Masterclass Limited
 </footer>
+<script>
+(function(){
+  // Wire nav Sign In/Sign Up buttons to Clerk Account Portal when loaded
+  function wireNavButtons() {
+    if (!window.Clerk) return;
+    var si = document.getElementById("nav-signin");
+    var su = document.getElementById("nav-signup");
+    if (si) si.onclick = function(e) {
+      e.preventDefault();
+      window.location.href = window.Clerk.buildSignInUrl({redirectUrl: window.location.origin + "/account"});
+    };
+    if (su) su.onclick = function(e) {
+      e.preventDefault();
+      window.location.href = window.Clerk.buildSignUpUrl({redirectUrl: window.location.origin + "/account"});
+    };
+  }
+  if (window.Clerk) {
+    window.Clerk.load().then(wireNavButtons);
+  } else {
+    var a = 0, iv = setInterval(function() {
+      if (++a > 50) { clearInterval(iv); return; }
+      if (window.Clerk) { clearInterval(iv); window.Clerk.load().then(wireNavButtons); }
+    }, 200);
+  }
+})();
+</script>
 </body>
 </html>`;
 }
@@ -238,28 +264,45 @@ export const ACCOUNT_PAGE = layout("Account", `
 (function(){
   var root = document.getElementById("clerk-root");
   if (!root) return;
+  var returnUrl = window.location.origin + "/account";
 
   function showButtons() {
     root.innerHTML = '<div style="text-align:center;padding:16px">' +
-      '<button onclick="window.Clerk.openSignIn({afterSignInUrl:&quot;/account&quot;,afterSignUpUrl:&quot;/account&quot;})" class="btn primary" style="margin:0 4px">Sign In</button>' +
-      '<button onclick="window.Clerk.openSignUp({afterSignInUrl:&quot;/account&quot;,afterSignUpUrl:&quot;/account&quot;})" class="btn" style="margin:0 4px">Create Account</button>' +
+      '<button onclick="window.Clerk&&window.Clerk.buildSignInUrl&&(window.location.href=window.Clerk.buildSignInUrl({redirectUrl:&quot;' + returnUrl + '&quot;}))" class="btn primary" style="margin:0 4px">Sign In</button>' +
+      '<button onclick="window.Clerk&&window.Clerk.buildSignUpUrl&&(window.location.href=window.Clerk.buildSignUpUrl({redirectUrl:&quot;' + returnUrl + '&quot;}))" class="btn" style="margin:0 4px">Create Account</button>' +
       '</div>';
+    // Also show user info if already signed in
+    if (window.Clerk.user) {
+      var u = window.Clerk.user;
+      var n = u.fullName || (u.primaryEmailAddress && u.primaryEmailAddress.emailAddress) || u.id;
+      root.innerHTML = '<div style="text-align:center;padding:16px">' +
+        '<p style="color:#c4b5ff;font-size:1.1rem;margin-bottom:12px">Signed in as <strong>' + n + '</strong></p>' +
+        '<button onclick="window.Clerk.signOut()" class="btn ghost" style="margin:0 4px">Sign Out</button>' +
+        '</div>';
+    }
   }
 
-  if (window.Clerk && window.Clerk.openSignIn) {
-    showButtons();
-  } else {
-    root.innerHTML = '<p style="color:#8a8a9a;padding:24px">Loading sign-in…</p>';
-    var a = 0, iv = setInterval(function() {
+  function waitForClerk() {
+    var a = 0;
+    var iv = setInterval(function() {
       a++;
-      if (window.Clerk && window.Clerk.openSignIn) {
+      if (window.Clerk) {
         clearInterval(iv);
-        showButtons();
+        window.Clerk.load().then(showButtons).catch(function() {
+          root.innerHTML = '<p style="color:#ef4444;padding:24px">Unable to load sign-in. Please refresh.</p>';
+        });
       } else if (a > 100) {
         clearInterval(iv);
         root.innerHTML = '<p style="color:#ef4444;padding:24px">Unable to load sign-in. Please refresh.</p>';
       }
     }, 200);
+  }
+
+  if (window.Clerk) {
+    window.Clerk.load().then(showButtons).catch(function() { waitForClerk(); });
+  } else {
+    root.innerHTML = '<p style="color:#8a8a9a;padding:24px">Loading sign-in…</p>';
+    waitForClerk();
   }
 })();
 </script>
