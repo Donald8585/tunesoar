@@ -24,7 +24,7 @@ pub struct UserPrefs {
 impl Default for UserPrefs {
     fn default() -> Self {
         Self {
-            volume: 0.10,
+            volume: 0.025,
             carrier_frequency: 200.0,
             detection_interval_secs: 3,
             auto_start: true,
@@ -122,7 +122,7 @@ impl Database {
         for row in rows {
             let (key, value) = row.map_err(|e| format!("{}", e))?;
             match key.as_str() {
-                "volume" => prefs.volume = value.parse().unwrap_or(0.10),
+                "volume" => prefs.volume = value.parse().unwrap_or(0.025),
                 "carrier_frequency" => prefs.carrier_frequency = value.parse().unwrap_or(200.0),
                 "detection_interval_secs" => prefs.detection_interval_secs = value.parse().unwrap_or(3),
                 "auto_start" => prefs.auto_start = value.parse().unwrap_or(true),

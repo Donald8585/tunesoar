@@ -43,6 +43,42 @@ pub fn run() {
             app.manage(SafetyState::new(APP_VERSION.to_string()));
             app.manage(LicenseState::new());
 
+            // ── Startup DB sync: restore persisted prefs to live AudioState ──
+            let storage = app.state::<StorageState>();
+            let audio = app.state::<AudioState>();
+            match storage.db.lock().unwrap().get_prefs() {
+                Ok(prefs) => {
+                    *audio.volume.lock().unwrap() = prefs.volume;
+                    *audio.carrier_frequency.lock().unwrap() = prefs.carrier_frequency;
+                    log::info!("[tunesoar:audio] Startup sync: volume={:.3} carrier={:.0} Hz",
+                        prefs.volume, prefs.carrier_frequency);
+                }
+                Err(e) => {
+                    log::warn!("[tunesoar:audio] Startup sync failed: {}", e);
+                }
+            }
+
+            // ── Minimize to tray on window close ──
+            if let Some(window) = app.get_webview_window("main") {
+                let handle = app.handle().clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        let storage = handle.state::<StorageState>();
+                        let minimize = storage.db.lock().unwrap()
+                            .get_prefs()
+                            .map(|p| p.minimize_to_tray)
+                            .unwrap_or(true);
+                        if minimize {
+                            api.prevent_close();
+                            if let Some(w) = handle.get_webview_window("main") {
+                                log::info!("[tunesoar:audio] Minimized to tray");
+                                let _ = w.hide();
+                            }
+                        }
+                    }
+                });
+            }
+
             // Create system tray
             let handle = app.handle().clone();
             tray::create_tray(&handle).expect("Failed to create tray");

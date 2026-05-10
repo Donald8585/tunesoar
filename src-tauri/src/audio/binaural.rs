@@ -62,7 +62,7 @@ impl BinauralEngine {
                     );
                 },
                 |err| {
-                    log::error!("Audio stream error: {}", err);
+                    log::error!("[tunesoar:audio] Stream error: {}", err);
                 },
                 None,
             )

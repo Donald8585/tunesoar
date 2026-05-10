@@ -2,6 +2,7 @@ import { SignIn, SignUp, UserButton, useAuth, useUser } from "@clerk/react";
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ArrowLeft, Key, Shield, ExternalLink } from "lucide-react";
+import { addToast } from "./ErrorToast";
 
 interface Props {
   onBack: () => void;
@@ -16,7 +17,10 @@ export function Account({ onBack }: Props) {
 
   useEffect(() => {
     if (isSignedIn) {
-      invoke("get_license_info").then(setLicenseInfo).catch(() => {});
+      invoke("get_license_info").then(setLicenseInfo).catch((e) => {
+        console.error('[tunesoar:auth]', e);
+        addToast('tunesoar:auth', String(e), 'error');
+      });
     }
   }, [isSignedIn]);
 

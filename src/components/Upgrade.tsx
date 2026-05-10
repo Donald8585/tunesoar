@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { open } from "@tauri-apps/plugin-shell";
 import { APP_NAME, PRO_PRICE_MONTHLY, PRO_PRICE_LIFETIME } from "../lib/constants";
+import { addToast } from "./ErrorToast";
 import { Button } from "./ui/button";
 import { ArrowLeft, Check, Shield, Infinity as InfinityIcon, Sparkles } from "lucide-react";
 
@@ -20,7 +21,8 @@ export function Upgrade({ onBack }: Props) {
         : "https://trancelab.ai/tunesoar/checkout/lifetime";
       await open(checkoutUrl);
     } catch (e) {
-      console.error("Failed to open checkout:", e);
+      console.error('[tunesoar:billing]', e);
+      addToast('tunesoar:billing', String(e), 'error');
     }
     setLoading(null);
   };

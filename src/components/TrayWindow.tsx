@@ -6,6 +6,7 @@ import { Play, Pause, Activity, Volume2, Settings2, RefreshCw, ChevronDown } fro
 import { Logo } from "./Logo";
 import { Slider } from "./ui/slider";
 import { Button } from "./ui/button";
+import { addToast } from "./ErrorToast";
 
 export function TrayWindow() {
   const [status, setStatus] = useState<CurrentStatus | null>(null);
@@ -101,6 +102,13 @@ export function TrayWindow() {
     // If user is within 40px of bottom, consider them at the bottom
     setUserScrolled(scrollHeight - scrollTop - clientHeight > 40);
   };
+
+  // Surface audio errors as toasts
+  useEffect(() => {
+    if (status?.audio_error) {
+      addToast("tunesoar:audio", status.audio_error, "error");
+    }
+  }, [status?.audio_error]);
 
   return (
     <div className="flex flex-col h-full bg-surface">

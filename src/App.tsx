@@ -7,6 +7,7 @@ import { SafetyWarning } from "./components/SafetyWarning";
 import { Onboarding } from "./components/Onboarding";
 import { BreakNotice } from "./components/BreakNotice";
 import { Account } from "./components/Account";
+import { ErrorToastContainer } from "./components/ErrorToast";
 import { invoke } from "@tauri-apps/api/core";
 
 type Page = "tray" | "settings" | "mappings" | "upgrade" | "account";
@@ -57,6 +58,7 @@ function App() {
 
   return (
     <>
+      <ErrorToastContainer />
       {/* Safety gate always shows first, blocks everything */}
       {!safetyDone && <SafetyWarning onComplete={handleSafetyComplete} />}
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Shield, AlertTriangle, Zap, ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
+import { addToast } from "./ErrorToast";
 
 interface SafetyStatus {
   acknowledged: boolean;
@@ -51,6 +52,8 @@ export function SafetyWarning({ onComplete }: Props) {
       onComplete();
     } catch (e) {
       setError(`Failed to save: ${e}`);
+      console.error('[tunesoar:audio] safety ack failed:', e);
+      addToast('tunesoar:audio', String(e), 'error');
     }
   };
 
