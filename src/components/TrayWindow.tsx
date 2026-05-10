@@ -45,39 +45,6 @@ export function TrayWindow() {
     return () => clearInterval(interval);
   }, [fetchStatus]);
 
-  // ── Tray menu event listeners ──
-  useEffect(() => {
-    let unlisteners: (() => void)[] = [];
-    const setup = async () => {
-      // Toggle play/pause from tray
-      const u1 = await listen("tray-toggle", () => handleToggle());
-      unlisteners.push(u1);
-      // Override context from tray menu
-      const u2 = await listen<string>("override-context", (e) => {
-        const map: Record<string, string> = {
-          Focus: "coding", Relax: "relaxation", Creative: "creative",
-          Sleep: "sleep", Meeting: "meeting", Off: "auto",
-        };
-        const ctx = map[e.payload] || e.payload;
-        if (ctx === "auto") { handleResumeAuto(); }
-        else { handleManualOverride(ctx); }
-      });
-      unlisteners.push(u2);
-      // Discomfort stop from tray
-      const u3 = await listen("discomfort-stop", async () => {
-        try { await invoke("discomfort_stop"); } catch {}
-      });
-      unlisteners.push(u3);
-      // Navigate from tray (Settings)
-      const u4 = await listen<string>("navigate", (e) => {
-        window.location.hash = e.payload;
-      });
-      unlisteners.push(u4);
-    };
-    setup();
-    return () => { unlisteners.forEach(fn => fn()); };
-  }, []);
-
   const handleToggle = async () => {
     try {
       const playing = await invoke<boolean>("toggle_playback");
@@ -115,6 +82,35 @@ export function TrayWindow() {
       fetchStatus();
     } catch (e) { console.error("Resume auto failed:", e); }
   };
+
+  // ── Tray menu event listeners ──
+  useEffect(() => {
+    const unlisteners: (() => void)[] = [];
+    const setup = async () => {
+      const u1 = await listen("tray-toggle", () => handleToggle());
+      unlisteners.push(u1);
+      const u2 = await listen<string>("override-context", (e) => {
+        const map: Record<string, string> = {
+          Focus: "coding", Relax: "relaxation", Creative: "creative",
+          Sleep: "sleep", Meeting: "meeting", Off: "auto",
+        };
+        const ctx = map[e.payload] || e.payload;
+        if (ctx === "auto") { handleResumeAuto(); }
+        else { handleManualOverride(ctx); }
+      });
+      unlisteners.push(u2);
+      const u3 = await listen("discomfort-stop", async () => {
+        try { await invoke("discomfort_stop"); } catch { /* best-effort */ }
+      });
+      unlisteners.push(u3);
+      const u4 = await listen<string>("navigate", (e) => {
+        window.location.hash = e.payload;
+      });
+      unlisteners.push(u4);
+    };
+    setup();
+    return () => { unlisteners.forEach(fn => fn()); };
+  }, []);
 
   const contextType = (status?.context_type ?? "Ambient") as ContextType;
   const beatType = (status?.beat_type ?? "Alpha") as BeatType;

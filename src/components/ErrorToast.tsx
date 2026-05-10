@@ -20,6 +20,7 @@ function notify() {
   for (const fn of listeners) fn([...currentToasts]);
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function addToast(prefix: string, message: string, level: ToastLevel = "error") {
   const id = ++toastId;
   const toast: Toast = { id, message, level, prefix };
@@ -35,14 +36,14 @@ export function addToast(prefix: string, message: string, level: ToastLevel = "e
 export function ErrorToastContainer() {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  useEffect(() => {
-    listeners.add(setToasts);
-    return () => { listeners.delete(setToasts); };
-  }, []);
-
   const dismiss = useCallback((id: number) => {
     currentToasts = currentToasts.filter((t) => t.id !== id);
     notify();
+  }, []);
+
+  useEffect(() => {
+    listeners.add(setToasts);
+    return () => { listeners.delete(setToasts); };
   }, []);
 
   if (toasts.length === 0) return null;

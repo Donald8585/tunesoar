@@ -55,7 +55,7 @@ function App() {
 
   const handleSafetyComplete = () => setSafetyDone(true);
   const handleOnboardingComplete = async () => {
-    try { await invoke("save_pref", { key: "onboarding_completed", value: "true" }); } catch {}
+    try { await invoke("save_pref", { key: "onboarding_completed", value: "true" }); } catch { /* onboarding save is best-effort */ }
     setShowOnboarding(false);
   };
 
