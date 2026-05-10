@@ -170,7 +170,7 @@ export function Settings({ onBack }: Props) {
 
         <section className="pb-4">
           <div className="text-center">
-            <p className="text-xs text-text-secondary">{APP_NAME} v0.1.0 · <span className="text-trance-400">TranceLab</span></p>
+            <p className="text-xs text-text-secondary">{APP_NAME} v0.1.0 · <span className="text-trance-400">Wealth Maker Masterclass Limited</span></p>
             <p className="text-[10px] text-text-secondary mt-1">Pairs with MindGlow AI</p>
           </div>
         </section>

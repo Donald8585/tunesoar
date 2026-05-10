@@ -2,7 +2,7 @@
 name = "tunesoar"
 version = "0.1.0"
 description = "Context-Aware Binaural Beats Desktop App"
-authors = ["TranceLab"]
+authors = ["Wealth Maker Masterclass Limited"]
 license = "MIT"
 repository = "https://github.com/Donald8585/tunesoar"
 edition = "2021"

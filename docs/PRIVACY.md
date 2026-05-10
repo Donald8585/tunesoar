@@ -3,7 +3,7 @@
 **Effective Date: May 2026**
 **Last Updated: May 6, 2026**
 
-This Privacy Policy describes how **TranceLab** ("we," "our," or "us") collects, uses, stores, and protects your information when you use **TuneSoar** (the "Application"). By using TuneSoar, you agree to the practices described in this policy.
+This Privacy Policy describes how **Wealth Maker Masterclass Limited** ("we," "our," or "us") collects, uses, stores, and protects your information when you use **TuneSoar** (the "Application"). By using TuneSoar, you agree to the practices described in this policy.
 
 If you do not agree with this policy, do not use TuneSoar. You can also [disable all telemetry](#how-to-disable-all-telemetry) at any time.
 

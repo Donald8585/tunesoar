@@ -108,8 +108,8 @@ Outputs:
 
 ## Parent Brand
 
-**TranceLab** — Pairs with MindGlow AI.
+**Wealth Maker Masterclass Limited** — Pairs with MindGlow AI.
 
 ## License
 
-MIT © TranceLab
+MIT © Wealth Maker Masterclass Limited

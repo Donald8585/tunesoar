@@ -12,7 +12,7 @@ While many people use binaural beats without issue, **these rhythmic audio stimu
 
 **TuneSoar is not a medical device.** It has not been evaluated or approved by the U.S. Food and Drug Administration (FDA), the European Medicines Agency (EMA), the Hong Kong Department of Health (HKFDA), or any other regulatory body. TuneSoar is not intended to diagnose, treat, cure, or prevent any disease, condition, or disorder.
 
-Use of TuneSoar is **entirely at your own risk**. The developers (`TranceLab`) and its affiliates assume no liability for any injury, loss, or damage arising from the use of this software.
+Use of TuneSoar is **entirely at your own risk**. The developers (`Wealth Maker Masterclass Limited`) and its affiliates assume no liability for any injury, loss, or damage arising from the use of this software.
 
 ---
 
@@ -201,7 +201,7 @@ During late-night hours (22:00–06:00 local time), TuneSoar defaults to **Delta
 If you have safety concerns or experience adverse effects, please contact us:
 
 - **Email:** fiverrkroft@gmail.com
-- **Parent Brand:** TranceLab
+- **Parent Brand:** Wealth Maker Masterclass Limited
 - **Related Product:** MindGlow AI
 
 ---
