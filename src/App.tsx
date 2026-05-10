@@ -27,6 +27,21 @@ function App() {
     }).catch(() => {});
   }, []);
 
+  // Listen for hash changes from TrayWindow navigation links
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace("#/", "");
+      const validPages: Page[] = ["tray", "settings", "mappings", "upgrade", "account"];
+      if (validPages.includes(hash as Page)) {
+        setPage(hash as Page);
+      }
+    };
+    // Handle initial hash on load
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
   // Listen for break-required event from backend
   useEffect(() => {
     const unlisten = import("@tauri-apps/api/event").then(({ listen }) =>

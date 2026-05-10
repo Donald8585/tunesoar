@@ -18,7 +18,7 @@ impl AudioState {
         Self {
             engine: Arc::new(Mutex::new(None)),
             current_profile: Arc::new(Mutex::new(None)),
-            volume: Arc::new(Mutex::new(0.10)), // default 10%
+            volume: Arc::new(Mutex::new(0.025)), // default 10%
             is_playing: Arc::new(Mutex::new(false)),
             is_paused: Arc::new(Mutex::new(false)),
         }

@@ -143,7 +143,7 @@ pub fn detect_context(
 // ─── Manual Override ─────────────────────────────────────
 
 #[tauri::command]
-pub fn set_manual_override(context_type: String, context: State<ContextState>) -> Result<String, String> {
+pub fn set_manual_override(context_type: String, audio: State<AudioState>, context: State<ContextState>) -> Result<String, String> {
     let detector = context.detector.lock().unwrap();
     if context_type.is_empty() || context_type.eq_ignore_ascii_case("auto") {
         detector.enable_auto_detect();
@@ -160,6 +160,18 @@ pub fn set_manual_override(context_type: String, context: State<ContextState>) -
     };
     let ct_str = format!("{:?}", ct);
     detector.set_manual_override(Some(ct));
+
+    // Immediately update audio engine with the new beat profile
+    let now = chrono::Utc::now().timestamp_millis();
+    let detected = DetectedContext {
+        context_type: ct,
+        app_name: "Manual Override".to_string(),
+        window_title: String::new(),
+        url: None,
+        detected_at: now,
+    };
+    update_beat_for_context(&audio, &detected);
+
     Ok(ct_str)
 }
 

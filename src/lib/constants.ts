@@ -1,6 +1,6 @@
 export const VOLUME_MIN = 0;
 export const VOLUME_MAX = 0.25;
-export const VOLUME_DEFAULT = 0.10;
+export const VOLUME_DEFAULT = 0.025;
 export const CARRIER_FREQ_DEFAULT = 200;
 export const CARRIER_FREQ_MIN = 100;
 export const CARRIER_FREQ_MAX = 400;

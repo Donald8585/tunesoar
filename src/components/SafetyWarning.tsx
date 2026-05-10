@@ -157,8 +157,12 @@ export function SafetyWarning({ onComplete }: Props) {
             </div>
 
             {!scrolledToBottom && (
-              <div className="text-center py-2 text-xs text-text-secondary animate-pulse flex items-center justify-center gap-1">
-                <ChevronDown className="w-3 h-3" /> Scroll to continue
+              <div className="sticky bottom-0 text-center py-3 text-xs bg-gradient-to-t from-surface via-surface/90 to-transparent">
+                <div className="flex items-center justify-center gap-1.5 text-amber-400 animate-pulse">
+                  <ChevronDown className="w-3.5 h-3.5" />
+                  <span className="font-medium">Read and scroll to bottom to accept the user agreement</span>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </div>
               </div>
             )}
           </div>
@@ -204,14 +208,21 @@ export function SafetyWarning({ onComplete }: Props) {
             >
               Disagree & Quit
             </Button>
-            <Button
-              variant="primary"
-              className="flex-1"
-              disabled={!scrolledToBottom || !checkbox1 || !checkbox2}
-              onClick={handleAgree}
-            >
-              I Agree — Continue
-            </Button>
+            <div className="flex-1 flex flex-col items-center gap-1">
+              <Button
+                variant="primary"
+                className="w-full"
+                disabled={!scrolledToBottom || !checkbox1 || !checkbox2}
+                onClick={handleAgree}
+              >
+                I Agree — Continue
+              </Button>
+              {!scrolledToBottom && (
+                <span className="text-[10px] text-amber-400/70">
+                  ↑ Scroll to bottom first
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
