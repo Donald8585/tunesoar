@@ -30,10 +30,12 @@ export interface CurrentStatus {
   beat_type: string;
   beat_frequency: number;
   volume: number;
+  carrier_frequency: number;
   is_playing: boolean;
   is_paused: boolean;
   auto_detect_enabled: boolean;
   manual_override: string | null;
+  audio_error: string | null;
 }
 
 export interface UserPrefs {

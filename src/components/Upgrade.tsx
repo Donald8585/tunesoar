@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-shell";
 import { APP_NAME, PRO_PRICE_MONTHLY, PRO_PRICE_LIFETIME } from "../lib/constants";
 import { Button } from "./ui/button";
 import { ArrowLeft, Check, Shield, Infinity as InfinityIcon, Sparkles } from "lucide-react";
@@ -18,7 +18,7 @@ export function Upgrade({ onBack }: Props) {
       const checkoutUrl = plan === "monthly"
         ? "https://trancelab.ai/tunesoar/checkout/monthly"
         : "https://trancelab.ai/tunesoar/checkout/lifetime";
-      await invoke("shell:open", { path: checkoutUrl });
+      await open(checkoutUrl);
     } catch (e) {
       console.error("Failed to open checkout:", e);
     }

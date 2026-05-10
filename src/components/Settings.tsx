@@ -54,7 +54,10 @@ export function Settings({ onBack }: Props) {
               valueFormatter={(v) => `${Math.round((v / 0.25) * 100)}%`} />
             <Slider label="Carrier Frequency" min={CARRIER_FREQ_MIN} max={CARRIER_FREQ_MAX} step={1}
               value={prefs.carrier_frequency}
-              onChange={(v) => update("carrier_frequency", v.toString())}
+              onChange={(v) => {
+                update("carrier_frequency", v.toString());
+                invoke("set_carrier_frequency", { freq: v }).catch(console.error);
+              }}
               valueFormatter={(v) => `${v} Hz`} />
           </div>
         </section>

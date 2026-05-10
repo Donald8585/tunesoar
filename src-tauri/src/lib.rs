@@ -60,6 +60,7 @@ pub fn run() {
             commands::set_manual_override,
             commands::resume_auto_detect,
             commands::set_volume,
+            commands::set_carrier_frequency,
             commands::toggle_playback,
             commands::detect_context,
             commands::get_prefs,

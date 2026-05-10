@@ -128,6 +128,15 @@ export function TrayWindow() {
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-5 scroll-smooth"
       >
+      {/* Audio error banner */}
+      {status?.audio_error && (
+        <div className="pb-3">
+          <div className="rounded-lg bg-red-600/10 border border-red-600/30 p-3">
+            <p className="text-xs text-red-400">⚠️ {status.audio_error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Current Context Card */}
       <div className="pb-4 pt-1">
         <div className="rounded-xl bg-surface-light border border-surface-lighter p-4">

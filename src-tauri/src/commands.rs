@@ -20,10 +20,12 @@ pub struct CurrentStatus {
     pub beat_type: String,
     pub beat_frequency: f32,
     pub volume: f32,
+    pub carrier_frequency: f32,
     pub is_playing: bool,
     pub is_paused: bool,
     pub auto_detect_enabled: bool,
     pub manual_override: Option<String>,
+    pub audio_error: Option<String>,
 }
 
 /// Get current playback status and detected context
@@ -61,8 +63,10 @@ pub fn get_status(
             .unwrap_or_else(|| "None".to_string()),
         beat_frequency: profile.as_ref().map(|p| p.beat_frequency).unwrap_or(0.0),
         volume,
+        carrier_frequency: *audio.carrier_frequency.lock().unwrap(),
         is_playing,
         is_paused,
+        audio_error: *audio.error_message.lock().unwrap().clone(),
     })
 }
 
@@ -73,6 +77,22 @@ pub fn set_volume(volume: f32, audio: State<AudioState>) -> Result<(), String> {
     *audio.volume.lock().unwrap() = clamped;
     if let Some(ref mut engine) = *audio.engine.lock().unwrap() {
         engine.set_volume(clamped);
+    }
+    Ok(())
+}
+
+/// Set carrier frequency (100 - 400 Hz)
+#[tauri::command]
+pub fn set_carrier_frequency(freq: f32, audio: State<AudioState>) -> Result<(), String> {
+    let clamped = freq.clamp(100.0, 400.0);
+    *audio.carrier_frequency.lock().unwrap() = clamped;
+    // Update live engine if running
+    if let Some(ref mut engine) = *audio.engine.lock().unwrap() {
+        let mut profile = audio.current_profile.lock().unwrap();
+        if let Some(ref mut p) = *profile {
+            p.carrier_frequency = clamped;
+            engine.set_profile(p.clone());
+        }
     }
     Ok(())
 }

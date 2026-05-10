@@ -9,6 +9,8 @@ pub struct AudioState {
     pub engine: Arc<Mutex<Option<BinauralEngine>>>,
     pub current_profile: Arc<Mutex<Option<BeatProfile>>>,
     pub volume: Arc<Mutex<f32>>, // 0.0 - 0.25 (hard cap)
+    pub carrier_frequency: Arc<Mutex<f32>>, // 100 - 400 Hz
+    pub error_message: Arc<Mutex<Option<String>>>,
     pub is_playing: Arc<Mutex<bool>>,
     pub is_paused: Arc<Mutex<bool>>,
 }
@@ -19,6 +21,8 @@ impl AudioState {
             engine: Arc::new(Mutex::new(None)),
             current_profile: Arc::new(Mutex::new(None)),
             volume: Arc::new(Mutex::new(0.025)), // default 10%
+            carrier_frequency: Arc::new(Mutex::new(200.0)),
+            error_message: Arc::new(Mutex::new(None)),
             is_playing: Arc::new(Mutex::new(false)),
             is_paused: Arc::new(Mutex::new(false)),
         }
@@ -150,10 +154,13 @@ pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext) {
         return;
     }
 
+    // Use carrier frequency from AudioState (default 200 Hz, configurable via Settings)
+    let carrier = *state.carrier_frequency.lock().unwrap();
+
     let profile = BeatProfile {
         beat_type: context.context_type.default_beat(),
         beat_frequency: freq,
-        carrier_frequency: 200.0,
+        carrier_frequency: carrier,
         volume: *state.volume.lock().unwrap(),
     };
 
@@ -162,10 +169,12 @@ pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext) {
     } else {
         match BinauralEngine::new(profile.clone()) {
             Ok(engine) => {
+                *state.error_message.lock().unwrap() = None;
                 *engine_guard = Some(engine);
             }
             Err(e) => {
                 log::error!("Failed to create audio engine: {}", e);
+                *state.error_message.lock().unwrap() = Some(format!("Audio engine: {}", e));
             }
         }
     }
