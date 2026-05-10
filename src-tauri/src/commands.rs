@@ -8,6 +8,7 @@ use crate::storage::StorageState;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::State;
+use tauri::Emitter;
 
 // ─── Tauri Commands ────────────────────────────────────────────
 
