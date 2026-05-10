@@ -4,6 +4,15 @@ use std::f32::consts::PI;
 
 use super::{BeatProfile};
 
+// Write to stderr so errors are visible in production (no RUST_LOG needed)
+macro_rules! audio_log {
+    ($($arg:tt)*) => {
+        let msg = format!($($arg)*);
+        eprintln!("[tunesoar:audio] {}", msg);
+        log::info!("[tunesoar:audio] {}", msg);
+    };
+}
+
 /// Core binaural beat generator using pure DSP sine waves
 pub struct BinauralEngine {
     stream: Option<cpal::Stream>,
@@ -24,6 +33,7 @@ impl BinauralEngine {
             .default_output_device()
             .ok_or("No output device found")?;
 
+        audio_log!("Device: {:?}", device.name().unwrap_or_default());
         let config = device
             .default_output_config()
             .map_err(|e| format!("Failed to get default config: {}", e))?;
@@ -69,6 +79,9 @@ impl BinauralEngine {
             .map_err(|e| format!("Failed to build stream: {}", e))?;
 
         stream.play().map_err(|e| format!("Failed to play: {}", e))?;
+
+        audio_log!("Stream started: {} Hz, {} ch, vol={:.3}",
+            sample_rate, channels, profile.lock().unwrap().volume);
 
         Ok(Self {
             stream: Some(stream),

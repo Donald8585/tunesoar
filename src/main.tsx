@@ -6,7 +6,10 @@ import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ClerkProvider publishableKey="pk_live_Y2xlcmsudHVuZXNvYXIuY29tJA">
+    <ClerkProvider publishableKey="pk_live_Y2xlcmsudHVuZXNvYXIuY29tJA"
+      appearance={{ variables: { colorPrimary: '#6b21ff' } }}
+      afterSignOutUrl="/"
+    >
       <App />
     </ClerkProvider>
   </StrictMode>,

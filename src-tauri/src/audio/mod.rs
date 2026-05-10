@@ -209,8 +209,10 @@ pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext, li
                 *engine_guard = Some(engine);
             }
             Err(e) => {
-                log::error!("[tunesoar:audio] Failed to create audio engine: {}", e);
-                *state.error_message.lock().unwrap() = Some(format!("Audio engine: {}", e));
+                let msg = format!("Failed to create audio engine: {}", e);
+                eprintln!("[tunesoar:audio] {}", msg);
+                log::error!("[tunesoar:audio] {}", msg);
+                *state.error_message.lock().unwrap() = Some(msg);
             }
         }
     }

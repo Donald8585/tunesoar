@@ -37,9 +37,9 @@ export function TrayWindow() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStatus();
     // Also trigger context detection in the backend
-    invoke("detect_context").catch(() => {});
+    invoke("detect_context").catch((e) => { console.error('[tunesoar:audio] detect_context failed:', e); addToast('tunesoar:audio', String(e), 'error'); });
     const interval = setInterval(() => {
-      invoke("detect_context").catch(() => {});
+      invoke("detect_context").catch((e) => { console.error('[tunesoar:audio] detect_context poll failed:', e); });
       fetchStatus();
     }, 3000);
     return () => clearInterval(interval);
