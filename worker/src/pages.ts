@@ -76,8 +76,8 @@ export function layout(title: string, body: string, currentPage = ""): string {
     ${navLink("/downloads", "Downloads")}
     ${navLink("/pricing", "Pricing")}
     <span id="clerk-nav-auth">
-      <button onclick="window.Clerk?.openSignIn()" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px">Sign In</button>
-      <button onclick="window.Clerk?.openSignUp()" class="btn primary" style="padding:6px 14px;font-size:.82rem;margin-left:4px">Sign Up</button>
+      <a href="/account" id="nav-signin" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px" onclick="handleAuthClick(event,'signin')">Sign In</a>
+      <a href="/account" id="nav-signup" class="btn primary" style="padding:6px 14px;font-size:.82rem;margin-left:4px" onclick="handleAuthClick(event,'signup')">Sign Up</a>
     </span>
   </div>
 </nav>
@@ -91,6 +91,16 @@ export function layout(title: string, body: string, currentPage = ""): string {
   <br>© Wealth Maker Masterclass Limited
 </footer>
 <script>
+// ── Auth click handler (Clerk modal or fallback to /account) ──
+function handleAuthClick(e, mode) {
+  if (window.Clerk) {
+    e.preventDefault();
+    if (mode === 'signin') window.Clerk.openSignIn();
+    else window.Clerk.openSignUp();
+  }
+  // else: let the <a href="/account"> work as fallback
+}
+// ── Clerk auth-aware nav ──
 (function(){
   function updateNav() {
     var el = document.getElementById('clerk-nav-auth');
@@ -99,6 +109,9 @@ export function layout(title: string, body: string, currentPage = ""): string {
       var user = window.Clerk.user;
       var name = user.fullName || (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress) || 'Account';
       el.innerHTML = '<a href="/account" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px">' + name + '</a>';
+    } else {
+      el.innerHTML = '<a href="/account" id="nav-signin" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px" onclick="handleAuthClick(event,\'signin\')">Sign In</a>' +
+        '<a href="/account" id="nav-signup" class="btn primary" style="padding:6px 14px;font-size:.82rem;margin-left:4px" onclick="handleAuthClick(event,\'signup\')">Sign Up</a>';
     }
   }
   if (window.Clerk) {
