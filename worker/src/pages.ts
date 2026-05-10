@@ -236,11 +236,34 @@ export const ACCOUNT_PAGE = layout("Account", `
 <div id="clerk-root" style="max-width:400px;margin:0 auto"></div>
 <script>
 (function(){
-  if(window.Clerk){
-    Clerk.mountSignIn(document.getElementById("clerk-root"),{
-      afterSignInUrl:"/account",
-      afterSignUpUrl:"/account"
-    });
+  var root = document.getElementById("clerk-root");
+  if (!root) return;
+  root.innerHTML = '<p style="color:#8a8a9a;padding:24px">Loading sign-in…</p>';
+
+  function mount() {
+    if (window.Clerk) {
+      window.Clerk.mountSignIn(root, {
+        afterSignInUrl: "/account",
+        afterSignUpUrl: "/account"
+      });
+    }
+  }
+
+  if (window.Clerk) {
+    mount();
+  } else {
+    // Clerk script is async — poll until ready
+    var attempts = 0;
+    var iv = setInterval(function() {
+      attempts++;
+      if (window.Clerk) {
+        clearInterval(iv);
+        mount();
+      } else if (attempts > 100) {
+        clearInterval(iv);
+        root.innerHTML = '<p style="color:#ef4444;padding:24px">Unable to load sign-in. Please refresh the page or check your connection.</p><a href="https://github.com/Donald8585/tunesoar/releases/latest" class="btn primary" style="margin-top:8px">Download Desktop App</a>';
+      }
+    }, 200);
   }
 })();
 </script>
