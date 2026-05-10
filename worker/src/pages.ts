@@ -75,10 +75,8 @@ export function layout(title: string, body: string, currentPage = ""): string {
     ${navLink("/", "Home")}
     ${navLink("/downloads", "Downloads")}
     ${navLink("/pricing", "Pricing")}
-    <span id="clerk-nav-auth">
-      <a href="/account" id="nav-signin" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px" onclick="handleAuthClick(event,'signin')">Sign In</a>
-      <a href="/account" id="nav-signup" class="btn primary" style="padding:6px 14px;font-size:.82rem;margin-left:4px" onclick="handleAuthClick(event,'signup')">Sign Up</a>
-    </span>
+    <a href="/account" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px">Sign In</a>
+    <a href="/account" class="btn primary" style="padding:6px 14px;font-size:.82rem;margin-left:4px">Sign Up</a>
   </div>
 </nav>
 <main>${body}</main>
@@ -90,47 +88,6 @@ export function layout(title: string, body: string, currentPage = ""): string {
   <br><span style="color:#555">Bug reports / feature requests: <a href="mailto:alfredso@wealthmakermasterclass.com" style="color:#8b5cf6">alfredso@wealthmakermasterclass.com</a></span>
   <br>© Wealth Maker Masterclass Limited
 </footer>
-<script>
-// ── Auth click handler (Clerk modal or fallback to /account) ──
-function handleAuthClick(e, mode) {
-  if (window.Clerk) {
-    e.preventDefault();
-    if (mode === 'signin') window.Clerk.openSignIn();
-    else window.Clerk.openSignUp();
-  }
-  // else: let the <a href="/account"> work as fallback
-}
-// ── Clerk auth-aware nav ──
-(function(){
-  function updateNav() {
-    var el = document.getElementById('clerk-nav-auth');
-    if (!el) return;
-    if (window.Clerk && window.Clerk.user) {
-      var user = window.Clerk.user;
-      var name = user.fullName || (user.primaryEmailAddress && user.primaryEmailAddress.emailAddress) || 'Account';
-      el.innerHTML = '<a href="/account" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px">' + name + '</a>';
-    } else {
-      el.innerHTML = '<a href="/account" id="nav-signin" class="btn ghost" style="padding:6px 14px;font-size:.82rem;margin-left:8px" onclick="handleAuthClick(event,\'signin\')">Sign In</a>' +
-        '<a href="/account" id="nav-signup" class="btn primary" style="padding:6px 14px;font-size:.82rem;margin-left:4px" onclick="handleAuthClick(event,\'signup\')">Sign Up</a>';
-    }
-  }
-  if (window.Clerk) {
-    window.Clerk.addListener(updateNav);
-  } else {
-    var attempts = 0;
-    var interval = setInterval(function() {
-      attempts++;
-      if (window.Clerk && window.Clerk.user !== undefined) {
-        clearInterval(interval);
-        updateNav();
-        window.Clerk.addListener(updateNav);
-      } else if (attempts > 50) {
-        clearInterval(interval);
-      }
-    }, 200);
-  }
-})();
-</script>
 </body>
 </html>`;
 }
