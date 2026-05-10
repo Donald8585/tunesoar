@@ -238,30 +238,26 @@ export const ACCOUNT_PAGE = layout("Account", `
 (function(){
   var root = document.getElementById("clerk-root");
   if (!root) return;
-  root.innerHTML = '<p style="color:#8a8a9a;padding:24px">Loading sign-in…</p>';
 
-  function mount() {
-    if (window.Clerk) {
-      window.Clerk.mountSignIn(root, {
-        afterSignInUrl: "/account",
-        afterSignUpUrl: "/account"
-      });
-    }
+  function showButtons() {
+    root.innerHTML = '<div style="text-align:center;padding:16px">' +
+      '<button onclick="window.Clerk.openSignIn({afterSignInUrl:&quot;/account&quot;,afterSignUpUrl:&quot;/account&quot;})" class="btn primary" style="margin:0 4px">Sign In</button>' +
+      '<button onclick="window.Clerk.openSignUp({afterSignInUrl:&quot;/account&quot;,afterSignUpUrl:&quot;/account&quot;})" class="btn" style="margin:0 4px">Create Account</button>' +
+      '</div>';
   }
 
-  if (window.Clerk) {
-    mount();
+  if (window.Clerk && window.Clerk.openSignIn) {
+    showButtons();
   } else {
-    // Clerk script is async — poll until ready
-    var attempts = 0;
-    var iv = setInterval(function() {
-      attempts++;
-      if (window.Clerk) {
+    root.innerHTML = '<p style="color:#8a8a9a;padding:24px">Loading sign-in…</p>';
+    var a = 0, iv = setInterval(function() {
+      a++;
+      if (window.Clerk && window.Clerk.openSignIn) {
         clearInterval(iv);
-        mount();
-      } else if (attempts > 100) {
+        showButtons();
+      } else if (a > 100) {
         clearInterval(iv);
-        root.innerHTML = '<p style="color:#ef4444;padding:24px">Unable to load sign-in. Please refresh the page or check your connection.</p><a href="https://github.com/Donald8585/tunesoar/releases/latest" class="btn primary" style="margin-top:8px">Download Desktop App</a>';
+        root.innerHTML = '<p style="color:#ef4444;padding:24px">Unable to load sign-in. Please refresh.</p>';
       }
     }, 200);
   }
