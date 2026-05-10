@@ -6,6 +6,8 @@ mod safety;
 mod storage;
 mod tray;
 
+use std::io::Write;
+
 // Re-exports for testing
 pub use audio::{AudioState, BeatType, ContextType, BeatProfile, DetectedContext};
 
@@ -35,6 +37,14 @@ pub fn run() {
 
             let storage_state = StorageState::new(&app_data_dir)
                 .expect("Failed to initialize storage");
+
+            // Create diagnostic log file
+            let diag_path = app_data_dir.join("tunesoar-diag.log");
+            if let Ok(mut f) = std::fs::File::create(&diag_path) {
+                let _ = writeln!(f, "=== TuneSoar v{} started at {:?} ===", APP_VERSION, chrono::Utc::now());
+            }
+            crate::audio::binaural::set_diag_log_path(diag_path.to_string_lossy().to_string());
+
             app.manage(storage_state);
 
             // Initialize states

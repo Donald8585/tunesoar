@@ -1,6 +1,7 @@
 pub mod binaural;
 
 use binaural::BinauralEngine;
+use binaural::diag_log;
 use std::sync::{Arc, Mutex};
 use crate::license::LicenseState;
 

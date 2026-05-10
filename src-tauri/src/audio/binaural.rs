@@ -1,8 +1,29 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::sync::{Arc, Mutex};
 use std::f32::consts::PI;
+use std::io::Write;
 
-use super::{BeatProfile};
+use super::BeatProfile;
+
+/// Path to diagnostic log file (set by lib.rs at startup)
+static DIAG_LOG_PATH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+pub fn set_diag_log_path(path: String) {
+    let _ = DIAG_LOG_PATH.set(path);
+}
+
+pub fn set_diag_log_path(path: String) {
+    let _ = DIAG_LOG_PATH.set(path);
+}
+
+pub fn diag_log(msg: &str) {
+    eprintln!("[tunesoar:audio] {}", msg);
+    if let Some(p) = DIAG_LOG_PATH.get() {
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(p) {
+            let _ = writeln!(f, "[tunesoar:audio] {}", msg);
+        }
+    }
+}
 
 /// Core binaural beat generator using pure DSP sine waves
 pub struct BinauralEngine {
@@ -14,27 +35,26 @@ pub struct BinauralEngine {
     sample_rate: f32,
     phase_l: Arc<Mutex<f32>>,
     phase_r: Arc<Mutex<f32>>,
-    sample_count: Arc<Mutex<u64>>,
 }
 
 impl BinauralEngine {
     /// Create a new binaural beat engine and start streaming
     pub fn new(profile: BeatProfile) -> Result<Self, String> {
-        eprintln!("[tunesoar:audio] BinauralEngine::new called");
+        diag_log("BinauralEngine::new called");
         let host = cpal::default_host();
-        eprintln!("[tunesoar:audio] host={:?}", host.id());
+        diag_log(&format!("host={:?}", host.id()));
         let device = host
             .default_output_device()
             .ok_or("No output device found")?;
 
-        eprintln!("[tunesoar:audio] device={:?}", device.name());
+        diag_log(&format!("device={:?}", device.name()));
         let config = device
             .default_output_config()
             .map_err(|e| format!("Failed to get default config: {}", e))?;
 
         let sample_rate = config.sample_rate().0 as f32;
         let channels = config.channels() as usize;
-        eprintln!("[tunesoar:audio] stream config: {} Hz, {} channels", sample_rate, channels);
+        diag_log(&format!("stream config: {} Hz, {} channels", sample_rate, channels));
 
         let profile = Arc::new(Mutex::new(profile));
         let volume = Arc::new(Mutex::new(profile.lock().unwrap().volume));
@@ -42,7 +62,6 @@ impl BinauralEngine {
         let fade_active = Arc::new(Mutex::new(false));
         let phase_l = Arc::new(Mutex::new(0.0f32));
         let phase_r = Arc::new(Mutex::new(0.0f32));
-        let sample_count = Arc::new(Mutex::new(0u64));
 
         let p_clone = profile.clone();
         let v_clone = volume.clone();
@@ -50,7 +69,6 @@ impl BinauralEngine {
         let fa_clone = fade_active.clone();
         let pl_clone = phase_l.clone();
         let pr_clone = phase_r.clone();
-        let sc_clone = sample_count.clone();
 
         let stream = device
             .build_output_stream(
@@ -66,21 +84,20 @@ impl BinauralEngine {
                         &fa_clone,
                         &pl_clone,
                         &pr_clone,
-                        &sc_clone,
                     );
                 },
                 |err| {
-                    eprintln!("[tunesoar:audio] Stream error: {}", err);
+                    diag_log(&format!("Stream error: {}", err));
                     log::error!("[tunesoar:audio] Stream error: {}", err);
                 },
                 None,
             )
             .map_err(|e| format!("Failed to build stream: {}", e))?;
 
-        eprintln!("[tunesoar:audio] stream built ok");
+        diag_log("stream built ok");
         stream.play().map_err(|e| format!("Failed to play: {}", e))?;
 
-        eprintln!("[tunesoar:audio] stream.play() called, vol={:.3}", profile.lock().unwrap().volume);
+        diag_log(&format!("stream.play() called, vol={:.3}", profile.lock().unwrap().volume));
 
         Ok(Self {
             stream: Some(stream),
@@ -91,7 +108,6 @@ impl BinauralEngine {
             sample_rate,
             phase_l,
             phase_r,
-            sample_count,
         })
     }
 
@@ -106,7 +122,6 @@ impl BinauralEngine {
         fade_active: &Arc<Mutex<bool>>,
         phase_l: &Arc<Mutex<f32>>,
         phase_r: &Arc<Mutex<f32>>,
-        sample_count: &Arc<Mutex<u64>>,
     ) {
         let p = profile.lock().unwrap();
         let mut vol = volume.lock().unwrap();
@@ -116,10 +131,9 @@ impl BinauralEngine {
         // Smooth fade towards target volume (2-second ramp)
         if (*vol - target).abs() > 0.0001 {
             *fading = true;
-            let samples_per_step = sample_rate * 2.0; // 2 seconds
+            let samples_per_step = sample_rate * 2.0;
             let step = (target - *vol) / samples_per_step;
             *vol += step * (data.len() / channels) as f32;
-            // Snap to target when close
             if (*vol - target).abs() < step.abs() * 2.0 {
                 *vol = target;
                 *fading = false;
@@ -135,70 +149,50 @@ impl BinauralEngine {
         let mut pr = phase_r.lock().unwrap();
 
         for frame in data.chunks_mut(channels) {
-            // Left ear: carrier - half_beat
             let freq_l = carrier - half_beat;
             let increment_l = 2.0 * PI * freq_l / sample_rate;
             let sample = (*pl).sin() * effective_vol;
             *pl = (*pl + increment_l) % (2.0 * PI);
 
-            // Right ear: carrier + half_beat
             let freq_r = carrier + half_beat;
             let increment_r = 2.0 * PI * freq_r / sample_rate;
             let sample_r = (*pr).sin() * effective_vol;
 
-            // Map to output channels
             if channels >= 2 {
-                frame[0] = sample;       // left
-                frame[1] = sample_r;     // right
+                frame[0] = sample;
+                frame[1] = sample_r;
             } else {
-                // Mono: average both ears
                 frame[0] = (sample + sample_r) / 2.0;
             }
 
-            // Fill remaining channels with silence
             for ch in frame.iter_mut().skip(2) {
                 *ch = 0.0;
             }
 
             *pr = (*pr + increment_r) % (2.0 * PI);
         }
-
-        // Log peak sample every ~1 second for diagnostics
-        let mut sc = sample_count.lock().unwrap();
-        let prev = *sc;
-        *sc += data.len() as u64;
-        let rate = sample_rate as u64 * channels as u64;
-        if prev / rate != *sc / rate {
-            let peak = data.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
-            eprintln!("[tunesoar:audio] callback peak={:.4} vol={:.3}", peak, effective_vol);
-        }
     }
 
-    /// Change beat profile with 2-second crossfade
     pub fn set_profile(&mut self, new_profile: BeatProfile) {
         let mut p = self.profile.lock().unwrap();
         *p = new_profile;
         *self.target_volume.lock().unwrap() = p.volume;
     }
 
-    /// Set volume (clamped 0.0 - 0.25)
     pub fn set_volume(&mut self, vol: f32) {
         let clamped = vol.clamp(0.0, 0.25);
         *self.target_volume.lock().unwrap() = clamped;
     }
 
-    /// Fade out and stop playback
     pub fn fade_out(&mut self) {
         *self.target_volume.lock().unwrap() = 0.0;
     }
 
-    /// Resume from faded state
     pub fn fade_in(&mut self) {
         let p = self.profile.lock().unwrap();
         *self.target_volume.lock().unwrap() = p.volume;
     }
 
-    /// Check if engine is currently fading
     pub fn is_fading(&self) -> bool {
         *self.fade_active.lock().unwrap()
     }
