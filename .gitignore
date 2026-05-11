@@ -29,3 +29,4 @@ scripts/attunely-updater.key
 scripts/attunely-updater.key.pub
 worker/node_modules
 worker/.wrangler
+.cloudflare.env

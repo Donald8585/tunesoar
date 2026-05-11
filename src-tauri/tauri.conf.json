@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "TuneSoar",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "identifier": "com.wealthmakermasterclass.tunesoar",
   "build": {
     "frontendDist": "../dist",
@@ -45,7 +45,7 @@
     "publisher": "Wealth Maker Masterclass Limited",
     "category": "Utility",
     "shortDescription": "Context-aware binaural beats desktop app",
-    "longDescription": "TuneSoar automatically switches binaural beat profiles based on what you're doing \u2014 coding, writing, gaming, reading, or relaxing. Features 12 context types, 5 brainwave bands, auto-pause, sleep mode, and custom mappings. Runs quietly in your system tray.",
+    "longDescription": "TuneSoar automatically switches binaural beat profiles based on what you're doing — coding, writing, gaming, reading, or relaxing. Features 12 context types, 5 brainwave bands, auto-pause, sleep mode, and custom mappings. Runs quietly in your system tray.",
     "windows": {
       "nsis": {
         "installMode": "currentUser"
