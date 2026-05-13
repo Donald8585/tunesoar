@@ -12,6 +12,7 @@ use std::io::Write;
 pub use audio::{AudioState, BeatType, ContextType, BeatProfile, DetectedContext};
 
 use context::ContextState;
+use cpal::traits::{DeviceTrait, HostTrait};
 use license::LicenseState;
 use safety::SafetyState;
 use storage::StorageState;
@@ -28,6 +29,29 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            // ── Auto-open DevTools in debug builds ──
+            #[cfg(debug_assertions)]
+            if let Some(webview) = app.get_webview_window("main") {
+                webview.open_devtools();
+            }
+
+            // ── Audio device diagnostic at startup ──
+            {
+                let host = cpal::default_host();
+                log::info!("[tunesoar:startup] cpal host: {:?}", host.id());
+                match host.default_output_device() {
+                    Some(dev) => {
+                        log::info!("[tunesoar:startup] default output device: {:?}", dev.name());
+                        match dev.default_output_config() {
+                            Ok(cfg) => log::info!("[tunesoar:startup] config: {} Hz, {} channels, {:?}",
+                                cfg.sample_rate().0, cfg.channels(), cfg.sample_format()),
+                            Err(e) => log::error!("[tunesoar:startup] failed to get default config: {}", e),
+                        }
+                    }
+                    None => log::error!("[tunesoar:startup] NO OUTPUT DEVICE FOUND — audio will not work!"),
+                }
+            }
+
             // Initialize storage
             let app_data_dir = app
                 .path()

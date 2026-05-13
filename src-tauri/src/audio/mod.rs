@@ -146,6 +146,9 @@ pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext, li
 
     let is_pro = license.can_use("unlimited_contexts");
 
+    diag_log(&format!("update_beat_for_context: ctx={:?}, is_pro={}, engine_exists={}",
+        context.context_type, is_pro, engine_guard.is_some()));
+
     // ── Tier enforcement: redirect Pro-only contexts to Ambient for free users ──
     let effective_ctx = if !is_pro {
         match context.context_type {
@@ -202,17 +205,19 @@ pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext, li
     };
 
     if let Some(ref mut engine) = *engine_guard {
-        eprintln!("[tunesoar:audio] Updating existing engine: {:?} at {} Hz", beat_type, freq);
+        diag_log(&format!("Reusing engine: {:?} at {} Hz carrier={}", beat_type, freq, carrier));
         engine.set_profile(profile.clone());
     } else {
-        eprintln!("[tunesoar:audio] Creating new engine: {:?} at {} Hz", beat_type, freq);
+        diag_log(&format!("Creating new engine: {:?} at {} Hz carrier={} vol={:.3}", beat_type, freq, carrier, profile.volume));
         match BinauralEngine::new(profile.clone()) {
             Ok(engine) => {
+                diag_log("Engine created successfully");
                 *state.error_message.lock().unwrap() = None;
                 *engine_guard = Some(engine);
             }
             Err(e) => {
                 let msg = format!("Failed to create audio engine: {}", e);
+                diag_log(&msg);
                 eprintln!("[tunesoar:audio] {}", msg);
                 log::error!("[tunesoar:audio] {}", msg);
                 *state.error_message.lock().unwrap() = Some(msg);

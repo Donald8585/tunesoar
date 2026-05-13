@@ -136,6 +136,8 @@ pub fn detect_context(
     let detector = context.detector.lock().unwrap();
     let browser_url = context.browser_url.lock().unwrap().clone();
 
+    log::info!("[tunesoar:audio] detect_context called — browser_url={:?}", browser_url);
+
     // Get active window
     let (window_title, app_name) = match crate::context::platform::get_active_window() {
         Ok(result) => result,
@@ -144,6 +146,8 @@ pub fn detect_context(
             ("Unknown".to_string(), "Unknown".to_string())
         }
     };
+
+    log::info!("[tunesoar:audio] active window: app={}, title={}", app_name, window_title);
 
     let detected = detector.detect(&window_title, &app_name, browser_url.as_deref());
 
