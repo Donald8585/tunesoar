@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-shell";
 import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
@@ -17,15 +17,22 @@ interface DesktopUser {
   exp: number;
 }
 
+interface LicenseInfo {
+  valid: boolean;
+  plan?: string;
+  devices?: number;
+  max_devices?: number;
+  expires_at?: number;
+}
+
 function parseJwtPayload(token: string): DesktopUser | null {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;
-    // Base64url decode (add padding, replace chars)
     let b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
     while (b64.length % 4) b64 += "=";
     const json = atob(b64);
-    const payload = JSON.parse(json);
+    const payload = JSON.parse(json) as Record<string, unknown>;
     if (!payload.sub || !payload.exp) return null;
     return payload as DesktopUser;
   } catch {
@@ -35,45 +42,10 @@ function parseJwtPayload(token: string): DesktopUser | null {
 
 export function Account({ onBack }: Props) {
   const [user, setUser] = useState<DesktopUser | null>(null);
-  const [licenseInfo, setLicenseInfo] = useState<any>(null);
+  const [licenseInfo, setLicenseInfo] = useState<LicenseInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [pendingState, setPendingState] = useState("");
-
-  // Restore saved auth on mount
-  useEffect(() => {
-    const saved = localStorage.getItem("tunesoar_desktop_token");
-    if (saved) {
-      const u = parseJwtPayload(saved);
-      if (u && u.exp * 1000 > Date.now()) {
-        setUser(u);
-        // Store in Rust backend
-        invoke("set_desktop_auth", { token: saved }).catch(console.error);
-      } else {
-        localStorage.removeItem("tunesoar_desktop_token");
-      }
-    }
-  }, []);
-
-  // Listen for deep-link callbacks from system browser
-  useEffect(() => {
-    const unlisten = onOpenUrl((urls) => {
-      for (const url of urls) {
-        try {
-          const parsed = new URL(url);
-          if (parsed.hostname === "auth-callback") {
-            const token = parsed.searchParams.get("token");
-            const state = parsed.searchParams.get("state");
-            const err = parsed.searchParams.get("error");
-            handleCallback(token, state, err);
-          }
-        } catch { /* ignore malformed URLs */ }
-      }
-    });
-    return () => {
-      unlisten.then((fn) => fn());
-    };
-  }, []);
+  const pendingStateRef = useRef("");
 
   const handleCallback = useCallback((token: string | null, state: string | null, err: string | null) => {
     if (err) {
@@ -86,8 +58,7 @@ export function Account({ onBack }: Props) {
       setLoading(false);
       return;
     }
-    // Verify state
-    if (pendingState && state !== pendingState) {
+    if (pendingStateRef.current && state !== pendingStateRef.current) {
       setError("State mismatch — possible CSRF attack");
       setLoading(false);
       return;
@@ -103,28 +74,62 @@ export function Account({ onBack }: Props) {
       setLoading(false);
       return;
     }
-    // Success
     localStorage.setItem("tunesoar_desktop_token", token);
     setUser(u);
-    setPendingState("");
+    pendingStateRef.current = "";
     setLoading(false);
-    // Store in Rust backend
     invoke("set_desktop_auth", { token }).catch(console.error);
     addToast("auth", "Signed in successfully", "warning");
-  }, [pendingState]);
+  }, []);
+
+  // Restore saved auth on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("tunesoar_desktop_token");
+    if (saved) {
+      const u = parseJwtPayload(saved);
+      if (u && u.exp * 1000 > Date.now()) {
+        // Defer state update to avoid cascading render in effect
+        queueMicrotask(() => {
+          setUser(u);
+          invoke("set_desktop_auth", { token: saved }).catch(console.error);
+        });
+      } else {
+        localStorage.removeItem("tunesoar_desktop_token");
+      }
+    }
+  }, []);
+
+  // Listen for deep-link callbacks from system browser
+  useEffect(() => {
+    const unlistenPromise = onOpenUrl((urls) => {
+      for (const url of urls) {
+        try {
+          const parsed = new URL(url);
+          if (parsed.hostname === "auth-callback") {
+            const token = parsed.searchParams.get("token");
+            const stateParam = parsed.searchParams.get("state");
+            const errParam = parsed.searchParams.get("error");
+            handleCallback(token, stateParam, errParam);
+          }
+        } catch { /* ignore malformed URLs */ }
+      }
+    });
+    return () => {
+      unlistenPromise.then((fn) => fn());
+    };
+  }, [handleCallback]);
 
   const signInWithBrowser = useCallback(async () => {
     setLoading(true);
     setError("");
-    // Generate random state for CSRF protection
     const state = Array.from(crypto.getRandomValues(new Uint8Array(16)))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
-    setPendingState(state);
+    pendingStateRef.current = state;
     try {
       await open(`https://tunesoar.com/auth/desktop?state=${state}`);
-    } catch (e: any) {
-      setError(`Failed to open browser: ${e}`);
+    } catch (e: unknown) {
+      setError(`Failed to open browser: ${String(e)}`);
       setLoading(false);
     }
   }, []);
@@ -137,10 +142,9 @@ export function Account({ onBack }: Props) {
     addToast("auth", "Signed out", "warning");
   }, []);
 
-  // Load license info when user is set
   useEffect(() => {
     if (user) {
-      invoke("get_license_info").then(setLicenseInfo).catch((e) => {
+      invoke("get_license_info").then(setLicenseInfo).catch((e: unknown) => {
         console.error("[tunesoar:auth]", e);
         addToast("tunesoar:auth", String(e), "error");
       });
@@ -192,7 +196,6 @@ export function Account({ onBack }: Props) {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* User Info */}
             <div className="flex items-center gap-3 p-4 rounded-xl bg-surface-light border border-surface-lighter">
               <div className="w-9 h-9 rounded-full bg-trance-600 flex items-center justify-center text-white text-sm font-semibold">
                 {user.name?.charAt(0)?.toUpperCase() || "?"}
@@ -203,7 +206,6 @@ export function Account({ onBack }: Props) {
               </div>
             </div>
 
-            {/* License Info */}
             <div className="rounded-xl bg-surface-light border border-surface-lighter p-4">
               <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
                 <Key className="w-3.5 h-3.5" /> License
@@ -230,7 +232,7 @@ export function Account({ onBack }: Props) {
               ) : (
                 <p className="text-xs text-text-secondary">
                   No active license. Purchase one from the{" "}
-                  <a href="https://tunesoar.com/pricing" target="_blank" className="text-trance-400 hover:underline">
+                  <a href="https://tunesoar.com/pricing" target="_blank" className="text-trance-400 hover:underline" rel="noreferrer">
                     pricing page <ExternalLink className="w-3 h-3 inline" />
                   </a>
                   .
@@ -238,17 +240,16 @@ export function Account({ onBack }: Props) {
               )}
             </div>
 
-            {/* Manage Account */}
             <a
               href="https://accounts.tunesoar.com/user"
               target="_blank"
               className="flex items-center justify-between p-3 rounded-lg bg-surface-light border border-surface-lighter hover:bg-surface-lighter/50 transition-colors text-text-primary no-underline"
+              rel="noreferrer"
             >
               <span className="text-sm">Manage Account</span>
               <ExternalLink className="w-4 h-4 text-text-secondary" />
             </a>
 
-            {/* Sign Out */}
             <button
               onClick={signOut}
               className="w-full p-3 rounded-lg bg-surface-light border border-surface-lighter hover:bg-red-900/20 hover:border-red-800 text-text-secondary hover:text-red-300 transition-colors text-sm"
