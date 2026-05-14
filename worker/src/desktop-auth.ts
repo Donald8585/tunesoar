@@ -3,6 +3,7 @@
 // receives a signed JWT, redirected back to tunesoar:// app.
 
 import type { Context } from "hono";
+import { verifyToken } from "@clerk/backend";
 
 interface Env {
   CLERK_SECRET_KEY: string;
@@ -43,10 +44,19 @@ export async function signDesktopToken(
 
 async function getClerkUser(
   clerkToken: string,
+  secretKey: string,
 ): Promise<{ id: string; email: string; name: string } | null> {
   try {
-    const res = await fetch("https://api.clerk.com/v1/me", {
-      headers: { Authorization: `Bearer ${clerkToken}` },
+    // Verify session token server-side with Clerk secret key
+    const result = await verifyToken(clerkToken, { secretKey });
+    if ("errors" in result) return null;
+    const data = result.data as Record<string, unknown>;
+    const sub = data.sub as string;
+    if (!sub) return null;
+
+    // Fetch full user details
+    const res = await fetch(`https://api.clerk.com/v1/users/${sub}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
     });
     if (!res.ok) return null;
     const user = await res.json() as any;
@@ -75,7 +85,7 @@ export async function handleDesktopToken(c: Context<{ Bindings: Env }>) {
     return Response.json({ error: "clerk_token and state required" }, { status: 400 });
   }
 
-  const user = await getClerkUser(clerkToken);
+  const user = await getClerkUser(clerkToken, env.CLERK_SECRET_KEY);
   if (!user) {
     return Response.json({ error: "Invalid Clerk token" }, { status: 401 });
   }
