@@ -34,7 +34,7 @@ function parseJwtPayload(token: string): DesktopUser | null {
     const json = atob(b64);
     const payload = JSON.parse(json) as Record<string, unknown>;
     if (!payload.sub || !payload.exp) return null;
-    return payload as DesktopUser;
+    return payload as unknown as DesktopUser;
   } catch {
     return null;
   }
@@ -144,7 +144,7 @@ export function Account({ onBack }: Props) {
 
   useEffect(() => {
     if (user) {
-      invoke("get_license_info").then(setLicenseInfo).catch((e: unknown) => {
+      invoke("get_license_info").then((info: unknown) => setLicenseInfo(info as LicenseInfo)).catch((e: unknown) => {
         console.error("[tunesoar:auth]", e);
         addToast("tunesoar:auth", String(e), "error");
       });
