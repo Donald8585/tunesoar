@@ -319,8 +319,8 @@ import { desktopAuthPage, handleDesktopToken } from "./desktop-auth";
 
 app.get("/auth/desktop", (c) => {
   const state = c.req.query("state") || "";
-  const error = c.req.query("error");
-  return new Response(desktopAuthPage(state, error || undefined), {
+  const returnUrl = `https://tunesoar.com/auth/desktop?state=${encodeURIComponent(state)}`;
+  return new Response(desktopAuthPage(returnUrl, state), {
     headers: { "Content-Type": "text/html; charset=utf-8" },
   });
 });
