@@ -28,6 +28,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
             // ── Auto-open DevTools in debug builds ──
             #[cfg(debug_assertions)]
@@ -76,6 +77,7 @@ pub fn run() {
             app.manage(ContextState::new());
             app.manage(SafetyState::new(APP_VERSION.to_string()));
             app.manage(LicenseState::new());
+            app.manage(commands::DesktopAuthToken::new());
 
             // ── Startup DB sync: restore persisted prefs to live AudioState ──
             let storage = app.state::<StorageState>();
@@ -152,6 +154,8 @@ pub fn run() {
             commands::verify_license,
             commands::get_license_info,
             commands::set_license_key,
+            commands::set_desktop_auth,
+            commands::clear_desktop_auth,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

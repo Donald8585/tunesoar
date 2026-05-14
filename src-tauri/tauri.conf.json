@@ -69,6 +69,11 @@
     }
   },
   "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["tunesoar"]
+      }
+    },
     "updater": {
       "endpoints": [
         "https://api.tunesoar.com/releases/updater/{{target}}/{{arch}}/{{current_version}}"

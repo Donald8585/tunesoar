@@ -514,3 +514,35 @@ pub async fn verify_license(
 ) -> Result<bool, String> {
     Ok(license.is_valid())
 }
+
+// ─── Desktop Auth Commands (Path C) ──────────────────────────
+
+use std::sync::Mutex;
+
+/// In-memory store for the desktop auth JWT from system-browser OAuth
+pub struct DesktopAuthToken(pub Mutex<Option<String>>);
+
+impl DesktopAuthToken {
+    pub fn new() -> Self {
+        Self(Mutex::new(None))
+    }
+}
+
+#[tauri::command]
+pub fn set_desktop_auth(
+    token: String,
+    auth: State<'_, DesktopAuthToken>,
+) -> Result<(), String> {
+    *auth.0.lock().unwrap() = Some(token);
+    log::info!("[tunesoar:auth] Desktop auth token stored");
+    Ok(())
+}
+
+#[tauri::command]
+pub fn clear_desktop_auth(
+    auth: State<'_, DesktopAuthToken>,
+) -> Result<(), String> {
+    *auth.0.lock().unwrap() = None;
+    log::info!("[tunesoar:auth] Desktop auth token cleared");
+    Ok(())
+}

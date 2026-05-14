@@ -314,8 +314,19 @@ Write-Host\"Installing...\";Start-Process -FilePath \$I -ArgumentList\"/S\" -Wai
 Remove-Item -Recurse -Force \$T -ErrorAction SilentlyContinue
 Write-Host\"✓ TuneSoar installed!\"-ForegroundColor Green`;
 
-app.get("/install.sh", (c) => new Response(INSTALL_SH, { headers: { "Content-Type": "text/plain; charset=utf-8" } }));
-app.get("/install.ps1", (c) => new Response(INSTALL_PS1, { headers: { "Content-Type": "text/plain; charset=utf-8" } }));
+// ── Desktop Auth Flow (Path C) ──
+import { desktopAuthPage, handleDesktopToken } from "./desktop-auth";
+
+app.get("/auth/desktop", (c) => {
+  const state = c.req.query("state") || "";
+  const error = c.req.query("error");
+  return new Response(desktopAuthPage(state, error || undefined), {
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+});
+
+app.post("/auth/desktop/token", (c) => handleDesktopToken(c as any));
+
 app.get("/health", () => Response.json({ ok: true }));
 
 export default app;
