@@ -49,7 +49,10 @@ async function getClerkUser(
   try {
     // Verify session token server-side with Clerk secret key
     const result = await verifyToken(clerkToken, { secretKey });
-    if ("errors" in result) return null;
+    if ("errors" in result) {
+      console.error("[desktop-auth] verifyToken errors:", JSON.stringify(result.errors));
+      return null;
+    }
     const data = result.data as Record<string, unknown>;
     const sub = data.sub as string;
     if (!sub) return null;
@@ -87,7 +90,7 @@ export async function handleDesktopToken(c: Context<{ Bindings: Env }>) {
 
   const user = await getClerkUser(clerkToken, env.CLERK_SECRET_KEY);
   if (!user) {
-    return Response.json({ error: "Invalid Clerk token" }, { status: 401 });
+    return Response.json({ error: "Invalid or expired Clerk session token. Please sign in again." }, { status: 401 });
   }
 
   const now = Math.floor(Date.now() / 1000);
