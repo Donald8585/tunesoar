@@ -517,8 +517,6 @@ pub async fn verify_license(
 
 // ─── Desktop Auth Commands (Path C) ──────────────────────────
 
-use std::sync::Mutex;
-
 /// In-memory store for the desktop auth JWT from system-browser OAuth
 pub struct DesktopAuthToken(pub Mutex<Option<String>>);
 
