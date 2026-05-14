@@ -1,9 +1,7 @@
 // ── Desktop Auth (Path C) — system-browser OAuth flow ──
-// User signs in on tunesoar.com (production Clerk domain),
-// receives a signed JWT, redirected back to tunesoar:// app.
+// User signs in on tunesoar.com → exchange session for desktop JWT
 
 import type { Context } from "hono";
-import { verifyToken } from "@clerk/backend";
 
 interface Env {
   CLERK_SECRET_KEY: string;
@@ -14,11 +12,8 @@ function b64url(buf: Uint8Array): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
   let s = "";
   for (let i = 0; i < buf.length; i += 3) {
-    const b0 = buf[i];
-    const b1 = i + 1 < buf.length ? buf[i + 1] : 0;
-    const b2 = i + 2 < buf.length ? buf[i + 2] : 0;
-    s += chars[b0 >> 2];
-    s += chars[((b0 & 3) << 4) | (b1 >> 4)];
+    const b0 = buf[i], b1 = i + 1 < buf.length ? buf[i + 1] : 0, b2 = i + 2 < buf.length ? buf[i + 2] : 0;
+    s += chars[b0 >> 2] + chars[((b0 & 3) << 4) | (b1 >> 4)];
     if (i + 1 < buf.length) s += chars[((b1 & 15) << 2) | (b2 >> 6)];
     if (i + 2 < buf.length) s += chars[b2 & 63];
   }
@@ -26,53 +21,61 @@ function b64url(buf: Uint8Array): string {
 }
 
 export async function signDesktopToken(
-  payload: Record<string, unknown>,
-  secret: string,
+  payload: Record<string, unknown>, secret: string,
 ): Promise<string> {
   const enc = new TextEncoder();
   const header = enc.encode(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const body = enc.encode(JSON.stringify(payload));
   const input = b64url(header) + "." + b64url(body);
   const key = await crypto.subtle.importKey(
-    "raw", enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false, ["sign"],
+    "raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
   );
   const sig = await crypto.subtle.sign("HMAC", key, enc.encode(input));
   return input + "." + b64url(new Uint8Array(sig));
 }
 
-async function getClerkUser(
-  clerkToken: string,
-  secretKey: string,
+async function getClerkUserBySession(
+  sessionId: string, clerkFapi: string, secretKey: string,
 ): Promise<{ id: string; email: string; name: string } | null> {
   try {
-    // Verify session token server-side with Clerk secret key
-    const result = await verifyToken(clerkToken, { secretKey });
-    if ("errors" in result) {
-      console.error("[desktop-auth] verifyToken errors:", JSON.stringify(result.errors));
+    // Fetch the active session from Clerk's Backend API
+    const res = await fetch(
+      `https://api.clerk.com/v1/sessions/${sessionId}`,
+      { headers: { Authorization: `Bearer ${secretKey}` } },
+    );
+    if (!res.ok) {
+      console.error(`[desktop-auth] Clerk API returned ${res.status}`);
       return null;
     }
-    const data = result.data as Record<string, unknown>;
-    const sub = data.sub as string;
-    if (!sub) return null;
-
-    // Fetch full user details
-    const res = await fetch(`https://api.clerk.com/v1/users/${sub}`, {
-      headers: { Authorization: `Bearer ${secretKey}` },
-    });
-    if (!res.ok) return null;
-    const user = await res.json() as any;
-    const emails = user.email_addresses || [];
-    const primary = emails.find((e: any) =>
-      e.id === user.primary_email_address_id,
+    const session = await res.json() as any;
+    if (session.status !== "active") {
+      console.error("[desktop-auth] Session not active:", session.status);
+      return null;
+    }
+    const userId = session.user_id;
+    if (!userId) {
+      console.error("[desktop-auth] No user_id in session");
+      return null;
+    }
+    // Fetch user details
+    const userRes = await fetch(
+      `https://api.clerk.com/v1/users/${userId}`,
+      { headers: { Authorization: `Bearer ${secretKey}` } },
     );
+    if (!userRes.ok) {
+      console.error(`[desktop-auth] Clerk user API returned ${userRes.status}`);
+      return null;
+    }
+    const user = await userRes.json() as any;
+    const emails: any[] = user.email_addresses || [];
+    const primary = emails.find((e: any) => e.id === user.primary_email_address_id);
     return {
       id: user.id,
       email: primary?.email_address || "",
       name: [user.first_name, user.last_name].filter(Boolean).join(" ") || "User",
     };
-  } catch {
+  } catch (e: any) {
+    console.error("[desktop-auth] getClerkUserBySession error:", e?.message || e);
     return null;
   }
 }
@@ -83,26 +86,21 @@ export async function handleDesktopToken(c: Context<{ Bindings: Env }>) {
   try { body = await c.req.json(); } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const { clerk_token: clerkToken, state } = body || {};
-  if (!clerkToken || !state) {
-    return Response.json({ error: "clerk_token and state required" }, { status: 400 });
+  const { session_id: sessionId, clerk_fapi: clerkFapi, state } = body || {};
+  if (!sessionId || !state) {
+    return Response.json({ error: "session_id and state required" }, { status: 400 });
   }
 
-  const user = await getClerkUser(clerkToken, env.CLERK_SECRET_KEY);
+  const user = await getClerkUserBySession(sessionId, clerkFapi, env.CLERK_SECRET_KEY);
   if (!user) {
-    return Response.json({ error: "Invalid or expired Clerk session token. Please sign in again." }, { status: 401 });
+    return Response.json({ error: "Invalid or expired Clerk session. Please sign in again." }, { status: 401 });
   }
 
   const now = Math.floor(Date.now() / 1000);
   const token = await signDesktopToken({
-    sub: user.id,
-    email: user.email,
-    name: user.name,
-    iat: now,
-    exp: now + 86400,
-    state,
+    sub: user.id, email: user.email, name: user.name,
+    iat: now, exp: now + 86400, state,
   }, env.LICENSE_SECRET);
-
   return Response.json({ token });
 }
 
@@ -158,13 +156,11 @@ p{color:#8a8a9a;font-size:.9rem;margin-bottom:24px}
 
   function showButtons() {
     if (!window.Clerk) return;
-    // If already signed in, exchange token immediately
     if (window.Clerk.session) {
       setHtml("content", '<div style="padding:20px"><span class="spinner"></span> Exchanging session…</div>');
       exchangeToken();
       return;
     }
-    // Show sign-in / sign-up buttons using Clerk's URL builder
     var signInUrl = window.Clerk.buildSignInUrl({ redirectUrl: returnUrl });
     var signUpUrl = window.Clerk.buildSignUpUrl({ redirectUrl: returnUrl });
     setHtml("content",
@@ -176,34 +172,27 @@ p{color:#8a8a9a;font-size:.9rem;margin-bottom:24px}
   async function exchangeToken() {
     try {
       if (!window.Clerk || !window.Clerk.session) {
-        showEl("error");
-        setHtml("error", "No session found. Please sign in above.");
-        showButtons();
-        return;
+        showEl("error"); setHtml("error", "No session found. Please sign in above."); showButtons(); return;
       }
-      var clerkToken = await window.Clerk.session.getToken();
+      // Send session ID + clerk FAPI domain to backend for server-side verification
+      var sessionId = window.Clerk.session.id;
+      var clerkFapi = window.Clerk.frontendApi || "";
       var resp = await fetch("/auth/desktop/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clerk_token: clerkToken, state: state }),
+        body: JSON.stringify({ session_id: sessionId, clerk_fapi: clerkFapi, state: state }),
       });
       var data = await resp.json();
       if (data.token) {
-        showEl("success");
-        setHtml("content", "");
-        // Redirect to desktop app via custom protocol
+        showEl("success"); setHtml("content", "");
         setTimeout(function() {
           window.location.href = "tunesoar://auth-callback?token=" + encodeURIComponent(data.token) + "&state=" + encodeURIComponent(state);
         }, 800);
       } else {
-        showEl("error");
-        setHtml("error", data.error || "Failed to generate token");
-        showButtons();
+        showEl("error"); setHtml("error", data.error || "Failed to generate token"); showButtons();
       }
     } catch(e) {
-      showEl("error");
-      setHtml("error", "Connection error. Please try again.");
-      showButtons();
+      showEl("error"); setHtml("error", "Connection error. Please try again."); showButtons();
     }
   }
 
@@ -214,22 +203,18 @@ p{color:#8a8a9a;font-size:.9rem;margin-bottom:24px}
       if (window.Clerk) {
         clearInterval(iv);
         window.Clerk.load().then(showButtons).catch(function(e) {
-          showEl("error");
-          setHtml("error", "Sign-in service unavailable: " + (e.message || "unknown"));
+          showEl("error"); setHtml("error", "Sign-in service unavailable: " + (e.message || "unknown"));
         });
       } else if (a > 100) {
         clearInterval(iv);
-        showEl("error");
-        setHtml("error", "Sign-in service unavailable. Please check your connection.");
+        showEl("error"); setHtml("error", "Sign-in service unavailable. Please check your connection.");
       }
     }, 200);
   }
 
   if (window.Clerk) {
     window.Clerk.load().then(showButtons).catch(function() { waitForClerk(); });
-  } else {
-    waitForClerk();
-  }
+  } else { waitForClerk(); }
 })();
 </script>
 </body>
