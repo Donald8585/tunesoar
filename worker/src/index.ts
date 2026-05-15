@@ -333,6 +333,29 @@ app.get("/debug/manifest", async(c) => {
   });
 });
 
+// ── Support: explain \${fn} download bug ──
+app.get("/support/update-fix", (c) => new Response(`<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"/><title>TuneSoar Support</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0a0a0f;color:#e4e4ec;max-width:640px;margin:40px auto;padding:20px;line-height:1.6}
+h1{color:#a78bfa}code{background:#1a1a28;padding:2px 6px;border-radius:4px;font-size:.9em}.box{background:#12121a;border:1px solid #2a2a3a;border-radius:12px;padding:20px;margin:16px 0}a{color:#60a5fa}</style></head>
+<body>
+<h1>Update file named \${fn}?</h1>
+<div class="box">
+<p>If your TuneSoar auto-update downloads a file literally named <code>\${fn}</code>, you're running an old version of the app that had a filename template bug.</p>
+<p><b>Quick fix:</b></p>
+<ol>
+<li>Download the latest installer manually:<br>
+  <a href="/downloads">tunesoar.com/downloads</a></li>
+<li>Install it over your current version (no uninstall needed)</li>
+<li>Future auto-updates will name files correctly</li>
+</ol>
+<p>This was a server-side template literal bug (fixed in v0.2.11+). The installed app was serving stale template URLs. One manual reinstall resolves it permanently.</p>
+<p>Still stuck? <a href="mailto:alfredso@wealthmakermasterclass.com">Email support</a></p>
+</div>
+<p style="font-size:.8rem;color:#555">Server version: v0.2.12 | All updater manifest URLs verified clean</p>
+</body></html>`,{headers:{"Content-Type":"text/html; charset=utf-8"}}));
+
 // ── Site Pages ──
 
 app.get("/", (c) => new Response(HOME_PAGE, { headers: { "Content-Type": "text/html; charset=utf-8" } }));
