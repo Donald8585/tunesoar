@@ -218,7 +218,7 @@ app.get("/releases/download/:filename", async(c) => {
   obj.writeHttpMetadata(headers);
   headers.set("Content-Type",contentType(fn));
   headers.set("Cache-Control","public, max-age=3600");
-  headers.set("Content-Disposition",`attachment; filename="${fn}"`);
+  headers.set("Content-Disposition",`attachment; filename="\${fn}"`);
   return new Response(obj.body,{headers});
 });
 
@@ -232,7 +232,7 @@ app.get("/releases/latest/:platform/:arch", async(c) => {
   obj.writeHttpMetadata(headers);
   headers.set("Content-Type",contentType(fn));
   headers.set("Cache-Control","public, max-age=3600");
-  headers.set("Content-Disposition",`attachment; filename="${fn}"`);
+  headers.set("Content-Disposition",`attachment; filename="\${fn}"`);
   return new Response(obj.body,{headers});
 });
 
@@ -253,7 +253,7 @@ app.get("/releases/updater/:target/:arch/:current_version", async(c) => {
       const url=rewritten.platforms[key].url;
       if(url) {
         const fn=url.split("/").pop();
-        rewritten.platforms[key].url=`https://${host}/releases/download/${fn}`;
+        rewritten.platforms[key].url=`https://${host}/releases/download/\${fn}`;
       }
     }
   }
@@ -278,11 +278,11 @@ app.get("/downloads", async(c) => {
 const INSTALL_SH=`#!/usr/bin/env bash
 set -euo pipefail
 BOLD=\"\\\\033[1m\";GREEN=\"\\\\033[0;32m\";RED=\"\\\\033[0;31m\";NC=\"\\\\033[0m\"
-log(){echo -e \"${GREEN}==>${NC} ${BOLD}$*${NC}\";};die(){echo -e \"${RED}✗${NC}  $*\">&2;exit 1;}
+log(){echo -e \"\${GREEN}==>\${NC} \${BOLD}$*\${NC}\";};die(){echo -e \"\${RED}✗\${NC}  $*\">&2;exit 1;}
 OS=$(uname -s);ARCH=$(uname -m)
 case \"$OS\" in Darwin)P=\"macos\";;Linux)P=\"linux\";;*)die \"Unsupported OS\";;esac
 case \"$ARCH\" in x86_64|amd64)A=\"x64\";;arm64|aarch64)A=\"arm64\";;*)die \"Unsupported arch\";;esac
-U=\"https://tunesoar.com/releases/latest/${P}/${A}\"
+U=\"https://tunesoar.com/releases/latest/\${P}/\${A}\"
 log \"Detected: $P / $A\";log \"Downloading TuneSoar...\"
 T=$(mktemp -d);trap 'rm -rf \"$T\"' EXIT;cd \"$T\"
 if [ \"$P\" = \"macos\" ];then
@@ -299,7 +299,7 @@ else
   printf '[Desktop Entry]\\\\nName=TuneSoar\\\\nComment=Context-Aware Binaural Beats\\\\nExec=%s/.local/bin/tunesoar\\\\nIcon=tunesoar\\\\nTerminal=false\\\\nType=Application\\\\nCategories=Audio;Utility;\\\\n' \"$HOME\">\"$HOME/.local/share/applications/tunesoar.desktop\"
   log \"Done! Run: tunesoar\"
 fi
-echo\"\";echo -e \"  ${GREEN}✓ TuneSoar installed!${NC}\";echo`;
+echo\"\";echo -e \"  \${GREEN}✓ TuneSoar installed!\${NC}\";echo`;
 
 const INSTALL_PS1=`# TuneSoar one-liner (Windows)
 param($Version=\"latest\");$ErrorActionPreference=\"Stop\"
