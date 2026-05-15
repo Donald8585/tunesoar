@@ -314,19 +314,202 @@ Write-Host\"Installing...\";Start-Process -FilePath \$I -ArgumentList\"/S\" -Wai
 Remove-Item -Recurse -Force \$T -ErrorAction SilentlyContinue
 Write-Host\"✓ TuneSoar installed!\"-ForegroundColor Green`;
 
-// ── Desktop Auth Flow (Path C) ──
-import { desktopAuthPage, handleDesktopToken } from "./desktop-auth";
+// ── Desktop Auth Flow (Path C) — fully inline ──
+
+// Inline the debug page and token handler to guarantee deployment
+const DESKTOP_AUTH_PAGE = makeDesktopAuthPage();
 
 app.get("/auth/desktop", (c) => {
   const state = c.req.query("state") || "";
   const returnUrl = `https://tunesoar.com/auth/desktop?state=${encodeURIComponent(state)}`;
-  return new Response(desktopAuthPage(returnUrl, state), {
-    headers: { "Content-Type": "text/html; charset=utf-8" },
-  });
+  return new Response(
+    DESKTOP_AUTH_PAGE.replace("__STATE__", JSON.stringify(state)).replace("__RETURN_URL__", JSON.stringify(returnUrl)),
+    { headers: { "Content-Type": "text/html; charset=utf-8" } },
+  );
 });
 
-app.post("/auth/desktop/token", (c) => handleDesktopToken(c as any));
+// Debug endpoint — echoes request body and Clerk API result
+app.post("/auth/desktop/debug", async (c) => {
+  const env = c.env as any;
+  let body: any;
+  try { body = await c.req.json(); } catch { body = null; }
+  const sessionId = body?.session_id;
+  if (!sessionId) {
+    return Response.json({ error: "session_id required", received: body });
+  }
+  const hasSecret = !!env.CLERK_SECRET_KEY;
+  let clerkResult = null;
+  try {
+    const res = await fetch(`https://api.clerk.com/v1/sessions/${sessionId}`, {
+      headers: { Authorization: `Bearer ${env.CLERK_SECRET_KEY}` },
+    });
+    clerkResult = { status: res.status, body: await res.text().catch(() => "read-error") };
+  } catch (e: any) {
+    clerkResult = { error: e?.message || String(e) };
+  }
+  return Response.json({ received: body, hasSecret, sessionId, clerkResult });
+});
+
+app.post("/auth/desktop/token", async (c) => {
+  const env = c.env as any;
+  let body: any;
+  try { body = await c.req.json(); } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const sessionId = body?.session_id;
+  const state = body?.state;
+  if (!sessionId || !state) {
+    return Response.json({ error: "session_id and state required", received: { hasSessionId: !!sessionId, hasState: !!state } }, { status: 400 });
+  }
+
+  // Step 1: Fetch session from Clerk Backend API
+  let session;
+  try {
+    const res = await fetch(`https://api.clerk.com/v1/sessions/${encodeURIComponent(sessionId)}`, {
+      headers: { Authorization: `Bearer ${env.CLERK_SECRET_KEY}` },
+    });
+    if (!res.ok) {
+      console.error(`[desktop-auth] Clerk session API returned ${res.status}`);
+      return Response.json({ error: "Session lookup failed", status: res.status }, { status: 401 });
+    }
+    session = await res.json() as any;
+  } catch (e: any) {
+    console.error("[desktop-auth] Clerk session fetch error:", e?.message || e);
+    return Response.json({ error: "Session lookup error" }, { status: 502 });
+  }
+
+  if (session.status !== "active" || !session.user_id) {
+    return Response.json({ error: "Session not active" }, { status: 401 });
+  }
+
+  // Step 2: Fetch user details
+  let user;
+  try {
+    const userRes = await fetch(`https://api.clerk.com/v1/users/${session.user_id}`, {
+      headers: { Authorization: `Bearer ${env.CLERK_SECRET_KEY}` },
+    });
+    if (!userRes.ok) {
+      return Response.json({ error: "User lookup failed", status: userRes.status }, { status: 502 });
+    }
+    user = await userRes.json() as any;
+  } catch (e: any) {
+    return Response.json({ error: "User lookup error" }, { status: 502 });
+  }
+
+  const emails = user.email_addresses || [];
+  const primary = emails.find((e: any) => e.id === user.primary_email_address_id);
+  const name = [user.first_name, user.last_name].filter(Boolean).join(" ") || "User";
+  const email = primary?.email_address || "";
+
+  // Step 3: Sign desktop JWT
+  const now = Math.floor(Date.now() / 1000);
+  const payload = JSON.stringify({ sub: user.id, email, name, iat: now, exp: now + 86400, state });
+  const header = JSON.stringify({ alg: "HS256", typ: "JWT" });
+
+  function b64url(buf: Uint8Array): string {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    let s = "";
+    for (let i = 0; i < buf.length; i += 3) {
+      const b0 = buf[i], b1 = i + 1 < buf.length ? buf[i + 1] : 0, b2 = i + 2 < buf.length ? buf[i + 2] : 0;
+      s += chars[b0 >> 2] + chars[((b0 & 3) << 4) | (b1 >> 4)];
+      if (i + 1 < buf.length) s += chars[((b1 & 15) << 2) | (b2 >> 6)];
+      if (i + 2 < buf.length) s += chars[b2 & 63];
+    }
+    return s;
+  }
+
+  const enc = new TextEncoder();
+  const hb = enc.encode(header), pb = enc.encode(payload);
+  const input = b64url(hb) + "." + b64url(pb);
+  const key = await crypto.subtle.importKey("raw", enc.encode(env.LICENSE_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(input));
+  const token = input + "." + b64url(new Uint8Array(sig));
+
+  return Response.json({ token });
+});
 
 app.get("/health", () => Response.json({ ok: true }));
 
 export default app;
+
+// ── Desktop auth page (inline, no import) ──
+function makeDesktopAuthPage(): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sign In — TuneSoar Desktop</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0a0a0f;color:#e4e4ec;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{background:#12121a;border:1px solid #2a2a3a;border-radius:16px;padding:40px;max-width:420px;width:100%;text-align:center;margin:16px}
+h1{font-size:1.5rem;margin-bottom:8px;background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+p{color:#8a8a9a;font-size:.9rem;margin-bottom:24px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:10px;font-size:.95rem;font-weight:600;text-decoration:none;transition:all .15s;cursor:pointer;border:1px solid #2a2a3a;background:#12121a;color:#c4c4d4;margin:6px}
+.btn:hover{background:#1a1a28;border-color:#4747ff;color:#fff}
+.btn.primary{background:linear-gradient(135deg,#6b21ff,#4747ff);border-color:transparent;color:#fff}
+.btn.primary:hover{opacity:.85}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid #2a2a3a;border-top-color:#6b21ff;border-radius:50%;animation:spin .6s linear infinite;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.msg{display:none;padding:12px;border-radius:8px;font-size:.85rem;margin-bottom:16px}
+.msg.error{background:#2d1111;border:1px solid #5c1a1a;color:#f87171}
+.msg.success{background:#0d2818;border:1px solid #1a5c2a;color:#4ade80}
+.msg.info{background:#111a2d;border:1px solid #1a2a5c;color:#60a5fa}
+.footer{font-size:.75rem;color:#555;margin-top:24px}
+</style>
+<script async crossorigin src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js" data-clerk-publishable-key="pk_live_Y2xlcmsudHVuZXNvYXIuY29tJA"></script>
+</head>
+<body>
+<div class="card">
+<svg width="48" height="48" viewBox="0 0 128 128" style="margin:0 auto 16px"><defs><linearGradient id="g" x1="0%22 y1="0%22 x2="100%22 y2="100%22><stop offset="0%22 stop-color="#8b5cf6"/><stop offset="100%22 stop-color="#3b82f6"/></linearGradient></defs><rect x="18" y="46" width="8" height="36" rx="4" fill="url(#g)" opacity=".7"/><rect x="32" y="32" width="8" height="64" rx="4" fill="url(#g)"/><rect x="46" y="22" width="8" height="84" rx="4" fill="url(#g)"/><circle cx="72" cy="64" r="22" fill="url(#g)"/><circle cx="72" cy="64" r="10" fill="#fff" opacity=".9"/><rect x="104" y="22" width="8" height="84" rx="4" fill="url(#g)"/><rect x="118" y="32" width="8" height="64" rx="4" fill="url(#g)" opacity=".7"/></svg>
+<h1>Sign in to TuneSoar</h1>
+<p>You'll be redirected back to the desktop app after signing in.</p>
+<div id="error" class="msg error"></div>
+<div id="success" class="msg success"></div>
+<div id="info" class="msg info"></div>
+<div id="content"><div style="padding:20px"><span class="spinner"></span> Loading…</div></div>
+<div class="footer">Wealth Maker Masterclass Limited</div>
+</div>
+<script>
+(function(){
+var state = __STATE__;
+var returnUrl = __RETURN_URL__;
+var sentRef = false;
+function show(el,style){var e=document.getElementById(el);if(e){e.style.display=style||"block";return e}}
+function setHtml(id,h){var e=document.getElementById(id);if(e)e.innerHTML=h}
+function showButtons(){
+if(!window.Clerk)return;
+if(window.Clerk.session&&!sentRef){
+sentRef=true;setHtml("content",'<div style="padding:20px"><span class="spinner"></span> Exchanging session…</div>');
+exchangeToken();return
+}
+if(window.Clerk.session)return;
+var s=window.Clerk.buildSignInUrl({redirectUrl:returnUrl});
+var u=window.Clerk.buildSignUpUrl({redirectUrl:returnUrl});
+setHtml("content",'<a href="'+s+'" class="btn primary">Sign In with Browser</a><a href="'+u+'" class="btn">Create Account</a>')
+}
+async function exchangeToken(){
+try{
+if(!window.Clerk||!window.Clerk.session){show("error");setHtml("error","No session found.");sentRef=false;showButtons();return}
+var sid=window.Clerk.session.id;
+var resp=await fetch("/auth/desktop/token",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({session_id:sid,state:state})});
+var data=await resp.json();
+if(data.token){show("success");setHtml("success","Signed in! Redirecting to app…");setHtml("content","");
+setTimeout(function(){window.location.href="tunesoar://auth-callback?token="+encodeURIComponent(data.token)+"&state="+encodeURIComponent(state)},600)
+}else{show("error");setHtml("error",data.error||"Failed");sentRef=false;showButtons()}
+}catch(e){show("error");setHtml("error","Connection error");sentRef=false;showButtons()}
+}
+function waitForClerk(){
+var a=0;var iv=setInterval(function(){a++;
+if(window.Clerk){clearInterval(iv);window.Clerk.load().then(showButtons).catch(function(e){show("error");setHtml("error","Sign-in unavailable: "+(e.message||"unknown"))})}
+else if(a>100){clearInterval(iv);show("error");setHtml("error","Sign-in unavailable. Check connection.")}
+},200)
+}
+if(window.Clerk){window.Clerk.load().then(showButtons).catch(function(){waitForClerk()})}
+else{waitForClerk()}
+})();
+</script>
+</body>
+</html>`;
+}
