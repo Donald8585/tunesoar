@@ -112,4 +112,16 @@ jobs:
             echo "🔴 SMOKE TEST FAILED — literal \${fn} found in response"
             exit 1
           fi
+          # ── Asset naming invariant: no R2 object may be named \${...} ──
+          BAD_ASSETS=$(curl -sf \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/r2/buckets/tunesoar-releases/objects?limit=100" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" | \
+            jq -r '.result.objects[]?.key // empty' | grep -E '\$\{[^}]+\}' || true)
+          if [ -n "$BAD_ASSETS" ]; then
+            echo "❌ R2 objects with template-literal names found:"
+            echo "$BAD_ASSETS"
+            FAIL=1
+          else
+            echo "  ✅ No \${...} in R2 object names"
+          fi
           echo "🟢 All smoke tests passed"

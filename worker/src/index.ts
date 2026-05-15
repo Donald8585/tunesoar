@@ -274,12 +274,14 @@ app.get("/releases/latest/:platform/:arch", async(c) => {
 
 app.get("/releases/updater/:target/:arch/:current_version", async(c) => {
   const cv=c.req.param("current_version");
+  const nocache=c.req.query("nocache")==="1";
   const manifestObj=await c.env.RELEASES.get("latest.json");
   if(!manifestObj) return Response.json({error:"No manifest"},{status:502});
 
   const manifest:any=await manifestObj.json();
   const lv=(manifest.version??"0.0.0").replace(/^v/,"");
-  if(lv===cv.replace(/^v/,"")) return new Response(null,{status:204});
+  if(lv===cv.replace(/^v/,"")) return Response.json({status:"no-update"},
+    {status:204,headers:{"Cache-Control":"no-store"}});
 
   // Rewrite download URLs to point to Cloudflare CDN
   const host=c.req.header("host")??"tunesoar.com";
@@ -293,7 +295,42 @@ app.get("/releases/updater/:target/:arch/:current_version", async(c) => {
       }
     }
   }
-  return Response.json(rewritten);
+  // Never cache updater manifest — it's dynamic per-request (host header)
+  const headers=new Headers();
+  headers.set("Cache-Control","no-store, max-age=0, must-revalidate");
+  headers.set("Content-Type","application/json");
+  return new Response(JSON.stringify(rewritten),{headers});
+});
+
+// ── Diagnostic: debug manifest info ──
+app.get("/debug/manifest", async(c) => {
+  const manifestObj=await c.env.RELEASES.get("latest.json");
+  if(!manifestObj) return Response.json({error:"No manifest"},{status:502});
+  const manifest:any=await manifestObj.json();
+  const host=c.req.header("host")??"tunesoar.com";
+  const resolved:any[]=[];
+  if(manifest.platforms) {
+    for(const key of Object.keys(manifest.platforms)) {
+      const ghUrl=manifest.platforms[key].url??"";
+      const fn=ghUrl.split("/").pop()??"";
+      resolved.push({
+        platform:key,
+        filename:fn,
+        ghUrl,
+        cdnUrl:`https://${host}/releases/download/${fn}`,
+        hasTemplateLiteral: fn.includes("${"),
+      });
+    }
+  }
+  return Response.json({
+    version:manifest.version,
+    pubDate:manifest.pub_date,
+    platformCount:resolved.length,
+    anyTemplateLiterals:resolved.some((r:any)=>r.hasTemplateLiteral),
+    cfRay:c.req.header("cf-ray")??"unknown",
+    cacheControl:"updater:no-store | assets:public,max-age=3600",
+    platforms:resolved,
+  });
 });
 
 // ── Site Pages ──
