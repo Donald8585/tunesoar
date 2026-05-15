@@ -199,9 +199,36 @@ function copyCode(btn,text){navigator.clipboard.writeText(text).then(function(){
   }
 }
 
-/// Single source of truth for Content-Disposition: attachment.
-/// Banned pattern: NEVER hand-roll 'Content-Disposition' or write `filename="${...}"`
-/// outside this helper.
+// ─── attachmentHeader() — SINGLE SOURCE OF TRUTH ────────────────────
+//
+// POST-MORTEM (2026-05-15):
+//   "${fn}" appeared as literal filename on downloaded binaries.
+//
+// ROOT CAUSE:
+//   Three code paths emitted Content-Disposition or download URLs.
+//   The first fix only addressed lines 221 & 235 (download routes).
+//   Line 256 (updater manifest URL) used
+//     `https://${host}/releases/download/\${fn}`
+//   where \${fn} was an ESCAPED template literal producing the
+//   literal string "${fn}" instead of interpolating the filename.
+//   This caused the Tauri updater to download files named "${fn}".
+//
+// WHY PRIOR FIX MISSED IT:
+//   Single-emitter assumption — we tested latest.json and binary
+//   downloads but not the updater manifest endpoint. The updater
+//   path was a separate emitter that constructed URLs differently.
+//
+// NEW INVARIANT:
+//   1. ONLY this function emits Content-Disposition headers.
+//   2. Download URLs in manifests are interpolated at generation
+//      time, never at runtime (the GitHub release asset filename
+//      is the single source).
+//   3. CI guards (grep + curl smoke test) ban \${fn} literals.
+//
+// BANNED PATTERNS (enforced by CI):
+//   - Hand-rolled 'Content-Disposition' outside this helper
+//   - Escaped \${...} in template literals producing literal "${...}"
+//
 function attachmentHeader(fn: string): string {
   const safe = fn.replace(/[^\w.\-]/g, "_");
   const utf8 = encodeURIComponent(fn);
