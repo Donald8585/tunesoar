@@ -465,14 +465,14 @@ async function exchangeToken(){
 try{
 if(!window.Clerk||!window.Clerk.session){show("error");setHtml("error","No session found.");sentRef=false;showButtons();return}
 var sid=window.Clerk.session.id;
-console.log("[desktop-auth] POST sessionId="+sid.slice(0,14)+"... state="+state.slice(0,8)+"...");
+console.log("[desktop-auth] [stage.b1] POST sessionId="+sid.slice(0,14)+"... state="+state.slice(0,8)+"...");
 var resp=await fetch("/auth/desktop/token",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:sid,state:state})});
-var data=await resp.json();console.log("[desktop-auth] server response",resp.status,data);
+var data=await resp.json();console.log("[desktop-auth] [stage.b2] server response",resp.status,data);
 if(!data.token){show("error");setHtml("error",(data.reason||data.error||"Failed")+(data.requestId?" ["+data.requestId+"]":""));return}
 // Loopback delivery: fetch the token directly to the desktop app's local HTTP server
 if(!desktopPort){show("error");setHtml("error","No desktop port — please restart sign-in from the app");return}
 var callbackUrl="http://127.0.0.1:"+desktopPort+"/callback?token="+encodeURIComponent(data.token)+"&state="+encodeURIComponent(state);
-console.log("[desktop-auth] delivering to loopback: "+callbackUrl.slice(0,80)+"...");
+console.log("[desktop-auth] [stage.b3] delivering to loopback: "+callbackUrl.slice(0,80)+"...");
 show("success");setHtml("success","Signed in! Sending to app…");
 setHtml("content",'<div style="padding:20px"><span class="spinner"></span> Connecting to desktop app…</div>');
 try{
@@ -480,13 +480,13 @@ var cbResp=await fetch(callbackUrl,{mode:"cors"});
 if(cbResp.ok){
 show("success");setHtml("success","Signed in! You can close this tab.");
 setHtml("content","<p style=\"color:#8a8a9a;font-size:.85rem\">✓ Token delivered to the desktop app.</p>");
-console.log("[desktop-auth] loopback delivery OK");
+console.log("[desktop-auth] [stage.b4] loopback delivery OK");
 }else{
 var cbData=await cbResp.json().catch(function(){return{}});
-console.error("[desktop-auth] loopback returned "+cbResp.status,cbData);
+console.error("[desktop-auth] [stage.b4] loopback returned "+cbResp.status,cbData);
 showFallback(data.token,"App rejected the token ("+cbResp.status+"): "+(cbData.error||"unknown"))}
 }catch(e){
-console.error("[desktop-auth] loopback fetch failed:",e.message||e);
+console.error("[desktop-auth] [stage.b4] loopback fetch failed:",e.message||e);
 showFallback(data.token,"Couldn&rsquo;t reach the desktop app. Is TuneSoar running?");
 }}
 catch(e){show("error");setHtml("error","Connection error");sentRef=false;showButtons()}}

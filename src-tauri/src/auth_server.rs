@@ -49,6 +49,7 @@ impl LoopbackAuthServer {
             error: None,
         }));
 
+        log::info!("[tunesoar:auth] [stage.lb1] loopback thread started port={}", port);
         let inner_clone = inner.clone();
         std::thread::spawn(move || {
             let start = std::time::Instant::now();
@@ -65,7 +66,7 @@ impl LoopbackAuthServer {
                 }
                 match listener.accept() {
                     Ok((mut stream, addr)) => {
-                        log::info!("[tunesoar:auth] loopback connection from {}", addr);
+                        log::info!("[tunesoar:auth] [stage.lb2] connection from {}", addr);
                         let mut buf = [0u8; 8192];
                         match stream.read(&mut buf) {
                             Ok(n) if n > 0 => {
@@ -122,22 +123,27 @@ fn handle_callback(req: &str, state: &mut InnerState) -> String {
     let req_state = extract_query_param(req, "state");
 
     log::info!(
-        "[tunesoar:auth] callback: token_len={} state={:?} expected={}",
+        "[tunesoar:auth] [stage.lb3] callback: token_len={} state={:?} expected={}",
         token.as_ref().map(|t| t.len()).unwrap_or(0),
         req_state.as_ref().map(|s| &s[..s.len().min(8)]),
         &state.expected_state[..state.expected_state.len().min(8)]
     );
 
     if req_state.as_deref() != Some(&state.expected_state) {
+        log::warn!("[tunesoar:auth] [stage.lb4] state mismatch — rejecting");
         return build_response(400, r#"{"error":"state_mismatch"}"#);
     }
     match token {
         Some(t) if !t.is_empty() => {
+            log::info!("[tunesoar:auth] [stage.lb4] token accepted len={}", t.len());
             state.token = Some(t);
             state.shutdown = true;
             build_response(200, r#"{"status":"ok"}"#)
         }
-        _ => build_response(400, r#"{"error":"missing_token"}"#),
+        _ => {
+            log::warn!("[tunesoar:auth] [stage.lb4] missing token — rejecting");
+            build_response(400, r#"{"error":"missing_token"}"#)
+        }
     }
 }
 

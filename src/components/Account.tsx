@@ -57,16 +57,18 @@ export function Account({ onBack }: Props) {
 
   const handleCallback = useCallback((token: string | null, state: string | null, err: string | null) => {
     if (err) {
+      console.log("[tunesoar:auth] [stage.7] error:", err);
       setError(decodeURIComponent(err));
       setLoading(false);
       cleanup();
       return;
     }
     if (!token) {
-      // No token but no error — might be a stop-poll signal; ignore
       return;
     }
+    console.log("[tunesoar:auth] [stage.6] token received len=" + token.length);
     if (pendingStateRef.current && state !== null && state !== pendingStateRef.current) {
+      console.error("[tunesoar:auth] [stage.6] state mismatch");
       setError("State mismatch — possible CSRF attack");
       setLoading(false);
       cleanup();
@@ -74,17 +76,20 @@ export function Account({ onBack }: Props) {
     }
     const u = parseJwtPayload(token);
     if (!u) {
+      console.error("[tunesoar:auth] [stage.6] invalid token payload");
       setError("Invalid token received");
       setLoading(false);
       cleanup();
       return;
     }
     if (u.exp * 1000 <= Date.now()) {
+      console.error("[tunesoar:auth] [stage.6] token expired");
       setError("Token expired");
       setLoading(false);
       cleanup();
       return;
     }
+    console.log("[tunesoar:auth] [stage.7] user=", u.sub.slice(0, 8), "email=", u.email);
     localStorage.setItem("tunesoar_desktop_token", token);
     setUser(u);
     pendingStateRef.current = "";
@@ -92,6 +97,7 @@ export function Account({ onBack }: Props) {
     cleanup();
     invoke("set_desktop_auth", { token }).catch(console.error);
     addToast("auth", "Signed in successfully", "warning");
+    console.log("[tunesoar:auth] [stage.8] done — user state set");
   }, [cleanup]);
 
   // Cleanup on unmount
@@ -146,6 +152,7 @@ export function Account({ onBack }: Props) {
   const signInWithBrowser = useCallback(async () => {
     setLoading(true);
     setError("");
+    console.log("[tunesoar:auth] [stage.1] starting sign-in flow");
     // Clean up any stale auth server from a previous attempt
     await invoke("stop_auth_server").catch(() => {});
 
@@ -158,28 +165,42 @@ export function Account({ onBack }: Props) {
     try {
       // Start the loopback server on 127.0.0.1:<random-port>
       const port = await invoke<number>("start_auth_server", { state });
-      console.log("[tunesoar:auth] Loopback server started on port", port);
+      console.log("[tunesoar:auth] [stage.2] loopback server started port=", port);
 
-      // Poll the loopback server for the token (every 1s)
+      // Open the system browser to the sign-in page
+      const url = `https://tunesoar.com/auth/desktop?state=${encodeURIComponent(state)}&port=${port}`;
+      console.log("[tunesoar:auth] [stage.3] opening browser:", url.slice(0, 80));
+      await open(url);
+      console.log("[tunesoar:auth] [stage.4] browser opened — waiting for callback");
+
+      // Poll the loopback server for the token (every 1s, 35s timeout)
+      let elapsed = 0;
+      const POLL_MS = 1000;
+      const TIMEOUT_MS = 35000;
       pollTimerRef.current = setInterval(async () => {
+        elapsed += POLL_MS;
         try {
           const result = await invoke<string | null>("poll_auth_server");
           if (result !== null) {
             // Token received!
+            console.log("[tunesoar:auth] [stage.5] token received from loopback after " + elapsed + "ms");
             handleCallback(result, null, null);
+          } else if (elapsed >= TIMEOUT_MS) {
+            // Timeout — no callback received
+            console.error("[tunesoar:auth] [stage.5] timeout after " + elapsed + "ms — no callback");
+            const timeoutMsg = elapsed >= 30000
+              ? "Sign-in timed out (30s). Check: 1) Is the browser tab still open? 2) Firewall may block loopback. Try disabling firewall temporarily or use the manual token below."
+              : "Sign-in timed out.";
+            handleCallback(null, null, timeoutMsg);
           }
-          // null = server still running, no token yet — continue polling
+          // null = server running, no token yet — continue polling
         } catch (e) {
-          // Error (timeout or server gone) — stop polling and show the error
+          console.error("[tunesoar:auth] [stage.5] poll error at " + elapsed + "ms:", e);
           handleCallback(null, null, String(e));
         }
-      }, 1000);
-
-      // Open the system browser to the sign-in page
-      const url = `https://tunesoar.com/auth/desktop?state=${encodeURIComponent(state)}&port=${port}`;
-      console.log("[tunesoar:auth] Opening browser:", url);
-      await open(url);
+      }, POLL_MS);
     } catch (e: unknown) {
+      console.error("[tunesoar:auth] [stage.2] start failed:", e);
       setError(`Failed to start sign-in: ${String(e)}`);
       setLoading(false);
       cleanup();
