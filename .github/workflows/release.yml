@@ -86,6 +86,7 @@ jobs:
 
   r2-upload:
     needs: publish-tauri
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
