@@ -188,9 +188,16 @@ export function Account({ onBack }: Props) {
           } else if (elapsed >= TIMEOUT_MS) {
             // Timeout — no callback received
             console.error("[tunesoar:auth] [stage.5] timeout after " + elapsed + "ms — no callback");
-            const timeoutMsg = elapsed >= 30000
-              ? "Sign-in timed out (30s). Check: 1) Is the browser tab still open? 2) Firewall may block loopback. Try disabling firewall temporarily or use the manual token below."
-              : "Sign-in timed out.";
+            const timeoutMsg = "Sign-in timed out after 35s.\n\n" +
+              "Common causes:\n" +
+              "1. Browser tab closed before sign-in completed\n" +
+              "2. Windows Firewall blocking loopback (127.0.0.1)\n" +
+              "3. Antivirus with HTTPS-scanning enabled\n\n" +
+              "Try: Click 'Sign in with Browser' again, or copy\n" +
+              "the token from the browser page (search for\n" +
+              "'text area' on the sign-in page after completion).\n\n" +
+              "Note: Cloudflare Insights ERR_FAILED in console\n" +
+              "is normal (ad-blockers) and not the cause.";
             handleCallback(null, null, timeoutMsg);
           }
           // null = server running, no token yet — continue polling

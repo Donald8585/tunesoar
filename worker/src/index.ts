@@ -354,6 +354,8 @@ h1{color:#a78bfa}code{background:#1a1a28;padding:2px 6px;border-radius:4px;font-
 <p>Still stuck? <a href="mailto:alfredso@wealthmakermasterclass.com">Email support</a></p>
 </div>
 <p style="font-size:.8rem;color:#555">Server version: v0.2.12 | All updater manifest URLs verified clean</p>
+<h2>Console ERR_FAILED on cloudflareinsights.com?</h2>
+<p style="font-size:.85rem;color:#8a8a9a">Cloudflare Web Analytics (<code>static.cloudflareinsights.com</code>) returning <code>ERR_FAILED</code> with status 200 is harmless. Ad blockers (uBlock, Brave Shields, Privacy Badger, Safari ITP) routinely block this script. It does NOT cause loading hangs. You can safely ignore it.</p>
 </body></html>`,{headers:{"Content-Type":"text/html; charset=utf-8"}}));
 
 // ── Site Pages ──
