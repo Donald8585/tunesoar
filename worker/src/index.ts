@@ -356,7 +356,7 @@ p{color:#8a8a9a;font-size:.9rem;margin-bottom:24px}
 <div class="footer">Wealth Maker Masterclass Limited</div>
 </div>
 <script>(function(){
-var state=__STATE__,returnUrl=__RETURN_URL__,sentRef=false;
+var state=__STATE__,returnUrl=__RETURN_URL__,desktopPort=__PORT__,sentRef=false;
 function show(el,s){var e=document.getElementById(el);if(e){e.style.display=s||"block"}}
 function setHtml(id,h){var e=document.getElementById(id);if(e)e.innerHTML=h}
 function showButtons(){
@@ -371,11 +371,37 @@ if(!window.Clerk||!window.Clerk.session){show("error");setHtml("error","No sessi
 var sid=window.Clerk.session.id;
 console.log("[desktop-auth] POST sessionId="+sid.slice(0,14)+"... state="+state.slice(0,8)+"...");
 var resp=await fetch("/auth/desktop/token",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:sid,state:state})});
-var data=await resp.json();console.log("[desktop-auth]",resp.status,data);
-if(data.token){show("success");setHtml("success","Signed in! Redirecting to app…");setHtml("content","");
-setTimeout(function(){window.location.href="tunesoar://auth-callback?token="+encodeURIComponent(data.token)+"&state="+encodeURIComponent(state)},600)}
-else{show("error");setHtml("error",(data.reason||data.error||"Failed")+(data.requestId?" ["+data.requestId+"]":""))}}
+var data=await resp.json();console.log("[desktop-auth] server response",resp.status,data);
+if(!data.token){show("error");setHtml("error",(data.reason||data.error||"Failed")+(data.requestId?" ["+data.requestId+"]":""));return}
+// Loopback delivery: fetch the token directly to the desktop app's local HTTP server
+if(!desktopPort){show("error");setHtml("error","No desktop port — please restart sign-in from the app");return}
+var callbackUrl="http://127.0.0.1:"+desktopPort+"/callback?token="+encodeURIComponent(data.token)+"&state="+encodeURIComponent(state);
+console.log("[desktop-auth] delivering to loopback: "+callbackUrl.slice(0,80)+"...");
+show("success");setHtml("success","Signed in! Sending to app…");
+setHtml("content",'<div style="padding:20px"><span class="spinner"></span> Connecting to desktop app…</div>');
+try{
+var cbResp=await fetch(callbackUrl,{mode:"cors"});
+if(cbResp.ok){
+show("success");setHtml("success","Signed in! You can close this tab.");
+setHtml("content","<p style=\"color:#8a8a9a;font-size:.85rem\">✓ Token delivered to the desktop app.</p>");
+console.log("[desktop-auth] loopback delivery OK");
+}else{
+var cbData=await cbResp.json().catch(function(){return{}});
+console.error("[desktop-auth] loopback returned "+cbResp.status,cbData);
+showFallback(data.token,"App rejected the token ("+cbResp.status+"): "+(cbData.error||"unknown"))}
+}catch(e){
+console.error("[desktop-auth] loopback fetch failed:",e.message||e);
+showFallback(data.token,"Couldn&rsquo;t reach the desktop app. Is TuneSoar running?");
+}}
 catch(e){show("error");setHtml("error","Connection error");sentRef=false;showButtons()}}
+function showFallback(token,msg){
+show("error");setHtml("success","");
+setHtml("content","");
+var html='<p style=\"margin-bottom:12px\">'+msg+'</p>';
+html+='<p style=\"font-size:.8rem;margin-bottom:8px\"><b>Manual recovery:</b> Copy the token below, then paste it into <b>Account → Sign In → Enter Token</b> in the desktop app.</p>';
+html+='<textarea style=\"width:100%;height:60px;margin-top:4px;background:#0a0a0f;color:#4ade80;border:1px solid #1a5c2a;border-radius:8px;padding:8px;font-size:11px;font-family:monospace;resize:none\" readonly>'+token+'</textarea>';
+html+='<button class=\"btn primary\" style=\"margin-top:8px\" onclick=\"navigator.clipboard.writeText(this.previousElementSibling.value).then(function(){this.textContent=&rsquo;✓ Copied!&rsquo;;setTimeout(function(){this.textContent=&rsquo;📋 Copy Token&rsquo;}.bind(this),2000)}.bind(this))\">📋 Copy Token</button>';
+setHtml("error",html)}
 function waitForClerk(){var a=0,iv=setInterval(function(){a++;if(window.Clerk){clearInterval(iv);window.Clerk.load().then(showButtons).catch(function(e){show("error");setHtml("error","Sign-in unavailable: "+(e.message||"unknown"))})}else if(a>100){clearInterval(iv);show("error");setHtml("error","Sign-in unavailable. Check connection.")}},200)}
 if(window.Clerk){window.Clerk.load().then(showButtons).catch(function(){waitForClerk()})}else{waitForClerk()}
 })();</script></body></html>`;
@@ -383,9 +409,16 @@ if(window.Clerk){window.Clerk.load().then(showButtons).catch(function(){waitForC
 // ── GET /auth/desktop ──
 app.get("/auth/desktop", (c) => {
   const state = c.req.query("state") || "";
-  const returnUrl = `https://tunesoar.com/auth/desktop?state=${encodeURIComponent(state)}`;
+  const port = c.req.query("port") || "";
+  const returnUrl = `https://tunesoar.com/auth/desktop?state=${encodeURIComponent(state)}&port=${encodeURIComponent(port)}`;
+  // Validate port is a number in the ephemeral range
+  const portNum = parseInt(port, 10);
+  const portStr = (portNum >= 1024 && portNum <= 65535) ? String(portNum) : "null";
   return new Response(
-    DESKTOP_AUTH_PAGE.replace("__STATE__", JSON.stringify(state)).replace("__RETURN_URL__", JSON.stringify(returnUrl)),
+    DESKTOP_AUTH_PAGE
+      .replace("__STATE__", JSON.stringify(state))
+      .replace("__RETURN_URL__", JSON.stringify(returnUrl))
+      .replace("__PORT__", portStr),
     { headers: { "Content-Type": "text/html; charset=utf-8" } },
   );
 });

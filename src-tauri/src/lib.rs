@@ -1,4 +1,5 @@
 mod audio;
+mod auth_server;
 mod commands;
 mod context;
 mod license;
@@ -78,6 +79,7 @@ pub fn run() {
             app.manage(SafetyState::new(APP_VERSION.to_string()));
             app.manage(LicenseState::new());
             app.manage(commands::DesktopAuthToken::new());
+            app.manage(commands::LoopbackServer::new());
 
             // ── Startup DB sync: restore persisted prefs to live AudioState ──
             let storage = app.state::<StorageState>();
@@ -124,7 +126,7 @@ pub fn run() {
             // This avoids thread-safety issues with platform-specific
             // window detection code and Tauri v2's runtime types.
 
-            log::info!("TuneSoar v{} started successfully", APP_VERSION);
+            log::info!("TuneSoar v{} started successfully — auth: loopback server", APP_VERSION);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -156,6 +158,10 @@ pub fn run() {
             commands::set_license_key,
             commands::set_desktop_auth,
             commands::clear_desktop_auth,
+            commands::ping_audio,
+            commands::start_auth_server,
+            commands::poll_auth_server,
+            commands::stop_auth_server,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

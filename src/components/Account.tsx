@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-shell";
-import { onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { ArrowLeft, Key, Shield, ExternalLink, LogIn } from "lucide-react";
 import { addToast } from "./ErrorToast";
 import { Button } from "./ui/button";
@@ -46,40 +45,60 @@ export function Account({ onBack }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const pendingStateRef = useRef("");
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const cleanup = useCallback(() => {
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+    invoke("stop_auth_server").catch(() => {});
+  }, []);
 
   const handleCallback = useCallback((token: string | null, state: string | null, err: string | null) => {
     if (err) {
       setError(decodeURIComponent(err));
       setLoading(false);
+      cleanup();
       return;
     }
     if (!token) {
-      setError("No token received from sign-in");
-      setLoading(false);
+      // No token but no error — might be a stop-poll signal; ignore
       return;
     }
-    if (pendingStateRef.current && state !== pendingStateRef.current) {
+    if (pendingStateRef.current && state !== null && state !== pendingStateRef.current) {
       setError("State mismatch — possible CSRF attack");
       setLoading(false);
+      cleanup();
       return;
     }
     const u = parseJwtPayload(token);
     if (!u) {
       setError("Invalid token received");
       setLoading(false);
+      cleanup();
       return;
     }
     if (u.exp * 1000 <= Date.now()) {
       setError("Token expired");
       setLoading(false);
+      cleanup();
       return;
     }
     localStorage.setItem("tunesoar_desktop_token", token);
     setUser(u);
     pendingStateRef.current = "";
     setLoading(false);
+    cleanup();
     invoke("set_desktop_auth", { token }).catch(console.error);
     addToast("auth", "Signed in successfully", "warning");
+  }, [cleanup]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      invoke("stop_auth_server").catch(() => {});
+    };
   }, []);
 
   // Restore saved auth on mount
@@ -88,7 +107,6 @@ export function Account({ onBack }: Props) {
     if (saved) {
       const u = parseJwtPayload(saved);
       if (u && u.exp * 1000 > Date.now()) {
-        // Defer state update to avoid cascading render in effect
         queueMicrotask(() => {
           setUser(u);
           invoke("set_desktop_auth", { token: saved }).catch(console.error);
@@ -99,40 +117,74 @@ export function Account({ onBack }: Props) {
     }
   }, []);
 
-  // Listen for deep-link callbacks from system browser
+  // Listen for auth token events from the Rust backend.
+  // The loopback server emits "loopback-auth-token" when it receives a valid callback.
+  // "desktop-auth-token" is a secondary path (deep-link fallback).
   useEffect(() => {
-    const unlistenPromise = onOpenUrl((urls) => {
-      for (const url of urls) {
-        try {
-          const parsed = new URL(url);
-          if (parsed.hostname === "auth-callback") {
-            const token = parsed.searchParams.get("token");
-            const stateParam = parsed.searchParams.get("state");
-            const errParam = parsed.searchParams.get("error");
-            handleCallback(token, stateParam, errParam);
-          }
-        } catch { /* ignore malformed URLs */ }
+    const unlisteners: (() => void)[] = [];
+    const setup = async () => {
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        const u1 = await listen<string>("loopback-auth-token", (event) => {
+          console.log("[tunesoar:auth] Account received token via loopback len=", event.payload.length);
+          handleCallback(event.payload, null, null);
+        });
+        unlisteners.push(u1);
+        const u2 = await listen<string>("desktop-auth-token", (event) => {
+          console.log("[tunesoar:auth] Account received token via desktop-auth-token len=", event.payload.length);
+          handleCallback(event.payload, null, null);
+        });
+        unlisteners.push(u2);
+      } catch (e) {
+        console.error("[tunesoar:auth] Event listener setup failed:", e);
       }
-    });
-    return () => {
-      unlistenPromise.then((fn) => fn());
     };
+    setup();
+    return () => { unlisteners.forEach((fn) => fn()); };
   }, [handleCallback]);
 
   const signInWithBrowser = useCallback(async () => {
     setLoading(true);
     setError("");
+    // Clean up any stale auth server from a previous attempt
+    await invoke("stop_auth_server").catch(() => {});
+
+    // Generate a crypto-random state for CSRF protection
     const state = Array.from(crypto.getRandomValues(new Uint8Array(16)))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
     pendingStateRef.current = state;
+
     try {
-      await open(`https://tunesoar.com/auth/desktop?state=${state}`);
+      // Start the loopback server on 127.0.0.1:<random-port>
+      const port = await invoke<number>("start_auth_server", { state });
+      console.log("[tunesoar:auth] Loopback server started on port", port);
+
+      // Poll the loopback server for the token (every 1s)
+      pollTimerRef.current = setInterval(async () => {
+        try {
+          const result = await invoke<string | null>("poll_auth_server");
+          if (result !== null) {
+            // Token received!
+            handleCallback(result, null, null);
+          }
+          // null = server still running, no token yet — continue polling
+        } catch (e) {
+          // Error (timeout or server gone) — stop polling and show the error
+          handleCallback(null, null, String(e));
+        }
+      }, 1000);
+
+      // Open the system browser to the sign-in page
+      const url = `https://tunesoar.com/auth/desktop?state=${encodeURIComponent(state)}&port=${port}`;
+      console.log("[tunesoar:auth] Opening browser:", url);
+      await open(url);
     } catch (e: unknown) {
-      setError(`Failed to open browser: ${String(e)}`);
+      setError(`Failed to start sign-in: ${String(e)}`);
       setLoading(false);
+      cleanup();
     }
-  }, []);
+  }, [handleCallback, cleanup]);
 
   const signOut = useCallback(() => {
     localStorage.removeItem("tunesoar_desktop_token");

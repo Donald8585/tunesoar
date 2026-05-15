@@ -213,6 +213,8 @@ pub fn update_beat_for_context(state: &AudioState, context: &DetectedContext, li
             Ok(engine) => {
                 diag_log("Engine created successfully");
                 *state.error_message.lock().unwrap() = None;
+                *state.is_playing.lock().unwrap() = true;
+                *state.is_paused.lock().unwrap() = false;
                 *engine_guard = Some(engine);
             }
             Err(e) => {

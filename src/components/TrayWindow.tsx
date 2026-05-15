@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { CurrentStatus } from "../types";
+import type { CurrentStatus, TransportState } from "../types";
 import { CONTEXT_LABELS, BEAT_PROFILES, type ContextType, type BeatType } from "../types";
 import { Play, Pause, Activity, Volume2, Settings2, RefreshCw, ChevronDown } from "lucide-react";
 import { Logo } from "./Logo";
@@ -34,6 +34,13 @@ export function TrayWindow() {
   }, []);
 
   useEffect(() => {
+    // ── IPC health check: verify audio subsystem is reachable ──
+    invoke<string>("ping_audio").then((msg) => {
+      console.log("[tunesoar:transport] ping_audio →", msg);
+    }).catch((e) => {
+      console.error("[tunesoar:transport] ping_audio FAILED:", e);
+      addToast("tunesoar:transport", "Audio engine offline: " + String(e).slice(0, 120), "error");
+    });
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStatus();
     // Also trigger context detection in the backend
@@ -49,10 +56,18 @@ export function TrayWindow() {
     try {
       const playing = await invoke<boolean>("toggle_playback");
       setIsPlaying(playing);
+      console.log("[tunesoar:transport] toggle_playback →", playing ? "playing" : "paused");
     } catch (e) {
-      console.error("Toggle failed:", e);
+      console.error("[tunesoar:transport] toggle_playback failed:", e);
+      addToast("tunesoar:transport", String(e).slice(0, 200), "error");
     }
   };
+
+  // Derive button enablement from transport state, not independent flags
+  const transportState: TransportState = status?.transport_state ?? "idle";
+  const isTransportBusy = transportState === "loading";
+  const isTransportError = transportState === "error";
+  const isTransportIdle = transportState === "idle";
 
   const handleVolume = async (v: number) => {
     try {
@@ -170,9 +185,24 @@ export function TrayWindow() {
             size="sm"
             variant={isPlaying ? "primary" : "secondary"}
             onClick={handleToggle}
+            disabled={isTransportBusy || isTransportError}
+            title={
+              isTransportBusy ? "Audio engine starting…" :
+              isTransportError ? (status?.audio_error ?? "Audio error — check your output device") :
+              isTransportIdle ? "No beat profile. Select a context mode below." :
+              undefined
+            }
           >
-            {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-            {isPlaying ? "Pause" : "Play"}
+            {isTransportBusy ? (
+              <span className="animate-spin w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full" />
+            ) : isTransportError ? (
+              <span className="text-red-400 text-xs">⚠</span>
+            ) : isPlaying ? (
+              <Pause className="w-3.5 h-3.5" />
+            ) : (
+              <Play className="w-3.5 h-3.5" />
+            )}
+            {isTransportBusy ? "Starting…" : isTransportError ? "Error" : isPlaying ? "Pause" : "Play"}
           </Button>
         </div>
       </div>

@@ -5,6 +5,7 @@ use crate::safety::SafetyState;
 use crate::safety::gate::{self, SafetyAcknowledgment};
 use crate::storage::db::{ContextMapping, UserPrefs, UsageLog};
 use crate::storage::StorageState;
+use cpal::traits::{DeviceTrait, HostTrait};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 use tauri::State;
@@ -12,6 +13,39 @@ use tauri::Emitter;
 use chrono::Utc;
 
 // ─── Tauri Commands ────────────────────────────────────────────
+
+/// Transport state machine — explicit states for the audio transport.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum TransportState {
+    Idle,      // No engine, no profile
+    Loading,   // Engine being created
+    Ready,     // Engine created, awaiting play
+    Playing,   // Stream active
+    Paused,    // Stream exists but faded out
+    Error,     // Initialization or runtime error
+}
+
+impl TransportState {
+    /// Derive transport state from AudioState flags and engine existence.
+    pub fn from_audio(audio: &AudioState) -> Self {
+        let engine_exists = audio.engine.lock().unwrap().is_some();
+        let has_error = audio.error_message.lock().unwrap().is_some();
+        let is_playing = *audio.is_playing.lock().unwrap();
+        let is_paused = *audio.is_paused.lock().unwrap();
+        if has_error {
+            TransportState::Error
+        } else if !engine_exists {
+            TransportState::Idle
+        } else if is_playing && !is_paused {
+            TransportState::Playing
+        } else if is_paused {
+            TransportState::Paused
+        } else {
+            TransportState::Ready
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CurrentStatus {
@@ -28,6 +62,7 @@ pub struct CurrentStatus {
     pub auto_detect_enabled: bool,
     pub manual_override: Option<String>,
     pub audio_error: Option<String>,
+    pub transport_state: String,
     pub is_pro: bool,
 }
 
@@ -48,6 +83,7 @@ pub fn get_status(
     let is_playing = *audio.is_playing.lock().unwrap();
     let is_paused = *audio.is_paused.lock().unwrap();
 
+    let transport_state = format!("{:?}", TransportState::from_audio(&audio)).to_lowercase();
     Ok(CurrentStatus {
         context_type: current_ctx.as_ref()
             .map(|c| format!("{:?}", c.context_type))
@@ -71,6 +107,7 @@ pub fn get_status(
         is_playing,
         is_paused,
         audio_error: audio.error_message.lock().unwrap().clone(),
+        transport_state,
         is_pro: license.can_use("unlimited_contexts"),
     })
 }
@@ -107,23 +144,61 @@ pub fn set_carrier_frequency(freq: f32, audio: State<AudioState>) -> Result<(), 
 pub fn toggle_playback(audio: State<AudioState>) -> Result<bool, String> {
     let mut is_playing = audio.is_playing.lock().unwrap();
     let mut is_paused = audio.is_paused.lock().unwrap();
+    let engine_exists = audio.engine.lock().unwrap().is_some();
+    let has_profile = audio.current_profile.lock().unwrap().is_some();
+
+    log::info!("[tunesoar:audio] toggle_playback: was_playing={} was_paused={} engine={} profile={}",
+        *is_playing, *is_paused, engine_exists, has_profile);
 
     if *is_playing && !*is_paused {
         // Pause
         if let Some(ref mut engine) = *audio.engine.lock().unwrap() {
             engine.fade_out();
+            log::info!("[tunesoar:audio] toggle_playback → paused (fade_out)");
+        } else {
+            log::warn!("[tunesoar:audio] toggle_playback → pause requested but no engine");
         }
         *is_paused = true;
     } else {
-        // Resume
+        // Resume or start
         if let Some(ref mut engine) = *audio.engine.lock().unwrap() {
             engine.fade_in();
+            log::info!("[tunesoar:audio] toggle_playback → resume (fade_in)");
+        } else if has_profile {
+            // Engine doesn't exist yet but we have a profile — create one
+            let profile = audio.current_profile.lock().unwrap().clone().unwrap();
+            let vol = *audio.volume.lock().unwrap();
+            let carrier = *audio.carrier_frequency.lock().unwrap();
+            let mut p = profile.clone();
+            p.volume = vol;
+            p.carrier_frequency = carrier;
+            log::info!("[tunesoar:audio] toggle_playback → creating engine from profile: {:?} {}Hz vol={:.3}",
+                p.beat_type, p.beat_frequency, p.volume);
+            match crate::audio::binaural::BinauralEngine::new(p) {
+                Ok(engine) => {
+                    *audio.engine.lock().unwrap() = Some(engine);
+                    *audio.error_message.lock().unwrap() = None;
+                    log::info!("[tunesoar:audio] toggle_playback → engine created ok");
+                }
+                Err(e) => {
+                    let msg = format!("Failed to start audio: {}", e);
+                    log::error!("[tunesoar:audio] toggle_playback → {}", msg);
+                    *audio.error_message.lock().unwrap() = Some(msg);
+                    *is_playing = false;
+                    *is_paused = false;
+                    return Err(msg);
+                }
+            }
+        } else {
+            log::warn!("[tunesoar:audio] toggle_playback → play requested but no engine and no profile");
         }
         *is_paused = false;
         *is_playing = true;
     }
 
-    Ok(*is_playing && !*is_paused)
+    let result = *is_playing && !*is_paused;
+    log::info!("[tunesoar:audio] toggle_playback → result={}", result);
+    Ok(result)
 }
 
 /// Force a context detection cycle
@@ -542,5 +617,90 @@ pub fn clear_desktop_auth(
 ) -> Result<(), String> {
     *auth.0.lock().unwrap() = None;
     log::info!("[tunesoar:auth] Desktop auth token cleared");
+    Ok(())
+}
+
+// ─── Transport Health Check ──────────────────────────────────
+
+/// Ping the audio subsystem — verifies cpal can find an output device.
+/// Call on app boot. If this fails, audio will not work until the device is available.
+#[tauri::command]
+pub fn ping_audio() -> Result<String, String> {
+    let host = cpal::default_host();
+    let dev = host
+        .default_output_device()
+        .ok_or_else(|| "No output device found. Connect speakers or headphones.".to_string())?;
+    let config = dev
+        .default_output_config()
+        .map_err(|e| format!("Failed to get audio config: {}", e))?;
+    let msg = format!(
+        "{} at {} Hz / {} ch",
+        dev.name().unwrap_or_else(|_| "unknown".into()),
+        config.sample_rate().0,
+        config.channels()
+    );
+    log::info!("[tunesoar:transport] ping_audio → {}", msg);
+    Ok(msg)
+}
+
+// ─── Loopback Auth Server ────────────────────────────────────
+
+/// Wrapper for the ephemeral loopback HTTP server used during OAuth sign-in.
+pub struct LoopbackServer(pub Mutex<Option<crate::auth_server::LoopbackAuthServer>>);
+
+impl LoopbackServer {
+    pub fn new() -> Self {
+        Self(Mutex::new(None))
+    }
+}
+
+/// Start a loopback HTTP server on 127.0.0.1:0 for browser→desktop token handoff.
+/// Returns the bound port so the frontend can pass it to the Worker bridge page.
+/// The frontend should poll with `poll_auth_server` and call `stop_auth_server` to clean up.
+#[tauri::command]
+pub fn start_auth_server(
+    state: String,
+    server: State<'_, LoopbackServer>,
+) -> Result<u16, String> {
+    let mut guard = server.0.lock().unwrap();
+    if guard.is_some() {
+        return Err("Auth server already running".into());
+    }
+    let s = crate::auth_server::LoopbackAuthServer::start(state)
+        .map_err(|e| format!("Failed to start auth server: {}", e))?;
+    let port = s.port;
+    log::info!("[tunesoar:auth] Loopback server started on port {}", port);
+    *guard = Some(s);
+    Ok(port)
+}
+
+/// Poll the loopback auth server. Returns token if received, null if still waiting.
+/// Does NOT destroy the server.
+#[tauri::command]
+pub fn poll_auth_server(
+    server: State<'_, LoopbackServer>,
+) -> Result<Option<String>, String> {
+    let guard = server.0.lock().unwrap();
+    if let Some(ref s) = *guard {
+        let token = s.take_token();
+        if let Some(e) = s.error() {
+            return Err(e);
+        }
+        Ok(token)
+    } else {
+        Err("No auth server running".into())
+    }
+}
+
+/// Stop the loopback auth server and clean up.
+#[tauri::command]
+pub fn stop_auth_server(
+    server: State<'_, LoopbackServer>,
+) -> Result<(), String> {
+    let mut guard = server.0.lock().unwrap();
+    if let Some(s) = guard.take() {
+        s.shutdown();
+        log::info!("[tunesoar:auth] Loopback server stopped");
+    }
     Ok(())
 }

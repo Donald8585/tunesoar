@@ -23,6 +23,8 @@ export interface DetectedContext {
   detected_at: number;
 }
 
+export type TransportState = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'error';
+
 export interface CurrentStatus {
   context_type: string;
   app_name: string;
@@ -36,6 +38,7 @@ export interface CurrentStatus {
   auto_detect_enabled: boolean;
   manual_override: string | null;
   audio_error: string | null;
+  transport_state: TransportState;
   is_pro: boolean;
 }
 
