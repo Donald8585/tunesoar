@@ -199,6 +199,15 @@ function copyCode(btn,text){navigator.clipboard.writeText(text).then(function(){
   }
 }
 
+/// Single source of truth for Content-Disposition: attachment.
+/// Banned pattern: NEVER hand-roll 'Content-Disposition' or write `filename="${...}"`
+/// outside this helper.
+function attachmentHeader(fn: string): string {
+  const safe = fn.replace(/[^\w.\-]/g, "_");
+  const utf8 = encodeURIComponent(fn);
+  return `attachment; filename="${safe}"; filename*=UTF-8''${utf8}`;
+}
+
 function contentType(fn:string): string {
   if(fn.endsWith(".exe")) return "application/vnd.microsoft.portable-executable";
   if(fn.endsWith(".msi")) return "application/x-msi";
@@ -218,7 +227,7 @@ app.get("/releases/download/:filename", async(c) => {
   obj.writeHttpMetadata(headers);
   headers.set("Content-Type",contentType(fn));
   headers.set("Cache-Control","public, max-age=3600");
-  headers.set("Content-Disposition",`attachment; filename="${fn}"`);
+  headers.set("Content-Disposition",attachmentHeader(fn));
   return new Response(obj.body,{headers});
 });
 
@@ -232,7 +241,7 @@ app.get("/releases/latest/:platform/:arch", async(c) => {
   obj.writeHttpMetadata(headers);
   headers.set("Content-Type",contentType(fn));
   headers.set("Cache-Control","public, max-age=3600");
-  headers.set("Content-Disposition",`attachment; filename="${fn}"`);
+  headers.set("Content-Disposition",attachmentHeader(fn));
   return new Response(obj.body,{headers});
 });
 

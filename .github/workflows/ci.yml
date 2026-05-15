@@ -38,6 +38,26 @@ jobs:
 
       - run: cd src-tauri && cargo check
 
+      # ── CI guard: ban literal ${...} in Worker Content-Disposition paths ──
+      - name: Ban template literals in download headers
+        run: |
+          cd worker
+          # Must use attachmentHeader() helper, not hand-rolled strings
+          BAD_HAND=$(grep -n 'Content-Disposition.*filename=' src/index.ts | grep -v 'attachmentHeader' | grep -v '///' || true)
+          if [ -n "$BAD_HAND" ]; then
+            echo "❌ Hand-rolled Content-Disposition found (use attachmentHeader()):"
+            echo "$BAD_HAND"
+            exit 1
+          fi
+          # Must not have escaped \${fn} in template literals
+          BAD_ESC=$(grep -n '\\\\${fn}\|\\\\${' src/index.ts || true)
+          if [ -n "$BAD_ESC" ]; then
+            echo "❌ Escaped template literal \${fn} found — will produce literal string:"
+            echo "$BAD_ESC"
+            exit 1
+          fi
+          echo "✅ No banned patterns in worker"
+
   deploy-worker:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     needs: test
@@ -56,3 +76,40 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: worker
           command: deploy
+
+      # ── Post-deploy smoke: verify no literal ${fn} in download headers ──
+      - name: Smoke test Content-Disposition headers
+        run: |
+          WORKER_URL="https://tunesoar-api.densereader.workers.dev"
+          PATHS=(
+            "/releases/download/latest.json"
+            "/releases/latest/windows/x64"
+            "/releases/latest/darwin/aarch64"
+            "/releases/latest/linux/x64"
+            "/releases/updater/windows/x64/0.2.10"
+          )
+          FAIL=0
+          for path in "${PATHS[@]}"; do
+            CD=$(curl -sI "${WORKER_URL}${path}" | grep -i ^content-disposition || true)
+            if echo "$CD" | grep -q '\${'; then
+              echo "❌ ${path}: $CD"
+              FAIL=1
+            else
+              echo "  ✅ ${path}"
+            fi
+          done
+          # Check updater manifest for ${fn} in URLs
+          MANIFEST_URLS=$(curl -s "${WORKER_URL}/releases/updater/windows/x64/0.2.10" | jq -r '.platforms[].url // empty' 2>/dev/null || true)
+          if echo "$MANIFEST_URLS" | grep -q '\${'; then
+            echo "❌ Updater manifest contains literal \${fn} in URLs"
+            echo "$MANIFEST_URLS"
+            FAIL=1
+          else
+            echo "  ✅ Updater manifest URLs clean"
+          fi
+          if [ $FAIL -ne 0 ]; then
+            echo ""
+            echo "🔴 SMOKE TEST FAILED — literal \${fn} found in response"
+            exit 1
+          fi
+          echo "🟢 All smoke tests passed"
