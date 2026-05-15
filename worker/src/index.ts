@@ -218,7 +218,7 @@ app.get("/releases/download/:filename", async(c) => {
   obj.writeHttpMetadata(headers);
   headers.set("Content-Type",contentType(fn));
   headers.set("Cache-Control","public, max-age=3600");
-  headers.set("Content-Disposition",`attachment; filename="\${fn}"`);
+  headers.set("Content-Disposition",`attachment; filename="${fn}"`);
   return new Response(obj.body,{headers});
 });
 
@@ -232,7 +232,7 @@ app.get("/releases/latest/:platform/:arch", async(c) => {
   obj.writeHttpMetadata(headers);
   headers.set("Content-Type",contentType(fn));
   headers.set("Cache-Control","public, max-age=3600");
-  headers.set("Content-Disposition",`attachment; filename="\${fn}"`);
+  headers.set("Content-Disposition",`attachment; filename="${fn}"`);
   return new Response(obj.body,{headers});
 });
 
