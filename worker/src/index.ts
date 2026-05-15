@@ -481,7 +481,7 @@ try{
 var cbResp=await fetch(callbackUrl,{mode:"cors"});
 if(cbResp.ok){
 show("success");setHtml("success","Signed in! You can close this tab.");
-setHtml("content","<p style=\"color:#8a8a9a;font-size:.85rem\">✓ Token delivered to the desktop app.</p>");
+setHtml("content","<p style='color:#8a8a9a;font-size:.85rem'>✓ Token delivered to the desktop app.</p>");
 console.log("[desktop-auth] [stage.b4] loopback delivery OK");
 }else{
 var cbData=await cbResp.json().catch(function(){return{}});
