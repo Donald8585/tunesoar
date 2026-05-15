@@ -253,7 +253,7 @@ app.get("/releases/updater/:target/:arch/:current_version", async(c) => {
       const url=rewritten.platforms[key].url;
       if(url) {
         const fn=url.split("/").pop();
-        rewritten.platforms[key].url=`https://${host}/releases/download/\${fn}`;
+        rewritten.platforms[key].url=`https://${host}/releases/download/${fn}`;
       }
     }
   }
