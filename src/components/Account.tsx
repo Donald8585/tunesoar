@@ -273,6 +273,26 @@ export function Account({ onBack }: Props) {
               <br />
               You'll be redirected back automatically.
             </p>
+            <details className="mt-4 text-left">
+              <summary className="text-[10px] text-text-secondary cursor-pointer hover:text-text-primary">
+                🔧 Enter token manually (if auto-redirect fails)
+              </summary>
+              <textarea
+                className="w-full h-16 mt-2 bg-surface-light border border-surface-lighter rounded-lg p-2 text-[10px] font-mono text-text-primary resize-none"
+                placeholder="Paste the JWT token from the browser sign-in page here…"
+                onBlur={(e) => {
+                  const token = e.target.value.trim();
+                  if (token && token.split('.').length === 3) {
+                    handleCallback(token, null, null);
+                  } else if (token) {
+                    setError("Not a valid token. Copy the full JWT from the browser page.");
+                  }
+                }}
+              />
+              <p className="text-[9px] text-text-secondary mt-1">
+                If the browser can't reach the desktop app, the sign-in page shows a text area with your token. Copy-paste it here.
+              </p>
+            </details>
           </div>
         ) : (
           <div className="space-y-4">
