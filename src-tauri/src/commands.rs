@@ -183,7 +183,7 @@ pub fn toggle_playback(audio: State<AudioState>) -> Result<bool, String> {
                 Err(e) => {
                     let msg = format!("Failed to start audio: {}", e);
                     log::error!("[tunesoar:audio] toggle_playback → {}", msg);
-                    *audio.error_message.lock().unwrap() = Some(msg);
+                    *audio.error_message.lock().unwrap() = Some(msg.clone());
                     *is_playing = false;
                     *is_paused = false;
                     return Err(msg);

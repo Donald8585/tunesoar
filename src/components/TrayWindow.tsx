@@ -99,6 +99,7 @@ export function TrayWindow() {
   };
 
   // ── Tray menu event listeners ──
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const unlisteners: (() => void)[] = [];
     const setup = async () => {
